@@ -6,7 +6,7 @@
 
 아직은 실력이 부족해서 그래프 관련 문제가 나오면 문제를 이해하는데 많은 시간을 할애하게 되는데 이럴 때는 그림으로 직접 예제를 그려보는게 좋은 점이 많은 거 같다.
 
-![캡처](https://user-images.githubusercontent.com/38122225/211691857-dd4b65a4-99ec-4fc5-a3f2-6bbee2bcd453.PNG)\
+![캡처](https://user-images.githubusercontent.com/38122225/211691857-dd4b65a4-99ec-4fc5-a3f2-6bbee2bcd453.PNG)
 
 ### 예제 입력
 
