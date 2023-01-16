@@ -18,10 +18,14 @@ class Solution {
 
         List<Sufoja> sufojas = Arrays.asList(sufoja1, sufoja2, sufoja3);
         
-        Collections.sort(sufojas);
-
+        int max = sufojas.stream()
+            .mapToInt(sufoja -> sufoja.count)
+            .max()
+            .getAsInt();
+        
         return sufojas.stream()
-            .filter(sufoja -> sufoja.count > 0)
+            .filter(sufoja -> sufoja.count == max)
+            .sorted()
             .mapToInt(sufoja -> sufoja.name)
             .toArray();
     }
@@ -40,7 +44,7 @@ class Solution {
         }
 
         public void grade(int answer, int index) {
-            int mark = this.answers[index % (this.answers.length - 1)];
+            int mark = this.answers[index % this.answers.length];
 
             if (answer == mark) {
                 correct();
@@ -53,16 +57,7 @@ class Solution {
 
         @Override
         public int compareTo(Sufoja s) {
-            if(s.count - this.count == 0) {
-                return this.name - s.name;
-            }
-            return s.count - this.count;
+            return this.name - s.name;
         }
-    }
-}
-
-class Main {
-    public static void main(String[] args) {
-        new Solution().solution(new int[] { 1, 2, 3, 4, 5 });
     }
 }
