@@ -2,7 +2,7 @@ package algorithm.programmers.같은숫자는싫어;
 
 import java.util.*;
 
-public class Solution {
+class Solution {
     public int[] solution(int[] arr) {
         Stack<Integer> stack = new Stack<>();
 
