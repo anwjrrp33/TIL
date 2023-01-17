@@ -1,24 +1,15 @@
 package algorithm.programmers.최소직사각형;
 
-import java.util.Collections;
-import java.util.PriorityQueue;
-
 class Solution {
     public int solution(int[][] sizes) {
-        PriorityQueue<Integer> width = new PriorityQueue<>(Collections.reverseOrder());
-        PriorityQueue<Integer> height = new PriorityQueue<>(Collections.reverseOrder());
+        int length = 0; 
+        int height = 0;
 
-        for (int[] size: sizes) {
-            if (size[0] >= size[1]) {
-                width.offer(size[0]);
-                height.offer(size[1]);
-                continue;
-            }
-
-            width.offer(size[1]);
-            height.offer(size[0]);
+        for (int[] card : sizes) {
+            length = Math.max(length, Math.max(card[0], card[1]));
+            height = Math.max(height, Math.min(card[0], card[1]));
         }
 
-        return width.poll() * height.poll();
+        return length * height;
     }
 }

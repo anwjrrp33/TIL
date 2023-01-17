@@ -54,6 +54,7 @@
 
 객체를 생성해서 가로와 세로에 해당하는 우선순위 큐에 각 객체를 담는건 너무 비효율적이라고 생각했다.
 
+### 변경 전 코드
 ```
 import java.util.Collections;
 import java.util.PriorityQueue;
@@ -75,6 +76,25 @@ class Solution {
         }
 
         return width.poll() * height.poll();
+    }
+}
+```
+
+위의 코드를 보면 탐색하는 과정에서 계속 정렬을 통해서 값을 구하는데 이런 방식보다 Math 함수를 써서 가장 큰 값만 가져오도록 하는 코드가 효율적으로 보였고 더 깔끔했다. 아래와 같이 코드를 변경했다.
+
+### 변경 후 코드
+```
+class Solution {
+    public int solution(int[][] sizes) {
+        int length = 0; 
+        int height = 0;
+
+        for (int[] card : sizes) {
+            length = Math.max(length, Math.max(card[0], card[1]));
+            height = Math.max(height, Math.min(card[0], card[1]));
+        }
+
+        return length * height;
     }
 }
 ```
