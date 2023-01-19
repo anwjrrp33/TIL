@@ -13,7 +13,7 @@
 
 슬슬 스택/큐 문제에 대해서 조금씩 익숙해져가는 느낌인데 조금씩 난이도를 높여야한다고 생각이 든다.
 
-### 코드
+### 변경 전 코드
 ```
 import java.util.LinkedList;
 import java.util.Queue;
@@ -61,6 +61,37 @@ class Solution {
         public void addSecond() {
             this.second++;
         }
+    }
+}
+```
+
+문제를 다 풀고 알게되었지만 효율성 부분에선 결국 O(n²) 이지만 문제의 케이스가 적기 때문에 통과하게 되었던 것이다. 그럼 효율적으로 풀기 위해선 어떤 방식을 채택해야 하는지를 보자면 처음 생각했던 스택의 방법이 맞았다. 문제의 의도가 정확한 코드는 아래와 같이 구현된다. 
+
+### 변경 후 코드
+```
+import java.util.Stack;
+
+class Solution {
+    public int[] solution(int[] prices) {
+        int[] ans = new int[prices.length];
+
+        Stack<Integer> stack = new Stack<>();
+
+        for (int i = 0; i < prices.length; i++) {
+            while (!stack.isEmpty() && prices[i] < prices[stack.peek()]) {
+                ans[stack.peek()] = i - stack.peek();
+                stack.pop();
+            }
+            
+            stack.push(i);
+        }
+
+        while (!stack.isEmpty()) {
+            ans[stack.peek()] = prices.length - stack.peek() - 1;
+            stack.pop();
+        }
+
+        return ans;
     }
 }
 ```

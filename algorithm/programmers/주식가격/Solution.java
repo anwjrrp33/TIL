@@ -1,51 +1,28 @@
 package algorithm.programmers.주식가격;
 
-import java.util.LinkedList;
-import java.util.Queue;
+import java.util.Stack;
 
 class Solution {
     public int[] solution(int[] prices) {
-        int[] answer = new int[prices.length];
+        int[] ans = new int[prices.length];
 
-        Queue<History> queue = new LinkedList<>();
+        Stack<Integer> stack = new Stack<>();
 
         for (int i = 0; i < prices.length; i++) {
-            queue.offer(new History(prices[i], 0, i));
-        }
-
-        while (!queue.isEmpty()) {
-            History past = queue.poll();
-
-            for (History history : queue) {
-                past.addSecond();
-
-                if (past.price > history.price) {
-                    break;
-                }
+            while (!stack.isEmpty() && prices[i] < prices[stack.peek()]) {
+                ans[stack.peek()] = i - stack.peek();
+                stack.pop();
             }
-
-            answer[past.order] = past.second;
+            
+            stack.push(i);
         }
 
-        return answer;
-    }
-
-    class History {
-        int price;
-
-        int second;
-
-        int order;
-
-        public History(int price, int second, int order) {
-            this.price = price;
-            this.second = second;
-            this.order = order;
+        while (!stack.isEmpty()) {
+            ans[stack.peek()] = prices.length - stack.peek() - 1;
+            stack.pop();
         }
 
-        public void addSecond() {
-            this.second++;
-        }
+        return ans;
     }
 }
 
