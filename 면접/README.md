@@ -1,5 +1,29 @@
 ## Java
 
+### JVM(Java Virtual Machine)
+* JVM은 자바 가상 머신으로 자바 프로그램 실행환경을 만들어주는 소프트웨어입니다. 자바 애플리케이션을 컴파일하여 클래스 로더를 통해 실행합니다. 메모리 관리인 GC를 수행하며 스택 기반의 가상머신입니다. 자바는 JVM을 통해서 실행되기 때문에 운영체제에 종속적이지 않고 어떠한 플랫폼에도 영향을 받지 않고 동일하게 수행됩니다.
+![Java 기본 실행 과정](https://img1.daumcdn.net/thumb/R1280x0/?scode=mtistory2&fname=https%3A%2F%2Fblog.kakaocdn.net%2Fdn%2F56cSc%2FbtruTEtjRXJ%2Fr1JNTkEuEeY8cSKtqcXCRK%2Fimg.png) 
+*  JVM 동작 방식
+    * 1. 자바 프로그램이 실행되면 JVM은 OS로 부터 메모리를 할당받는다.
+    * 2. 자바 컴파일러가 자바 코드(.java)를 자바 바이트코드(.class)로 컴파일한다.
+    * 3. 자바 바이트코드를 클래스 로더를 통해서 Runtime Data Area로 로딩한다.
+    * 4. Runtime Data Area에 로딩된 자바 바이트 코드를 Execution Engine을 통해서 해석한다.
+    * 5. 해석된 바이트 코드는 Runtime Data Area의 각 영역에 배치되어 수행하며 Execution Engine에 의해서 GC 작동과 쓰레드 동기화가 된다.
+![JVM 동작 방식](https://img1.daumcdn.net/thumb/R1280x0/?scode=mtistory2&fname=https%3A%2F%2Fblog.kakaocdn.net%2Fdn%2FcQRqku%2Fbtru0vJ6Ixx%2F9qCTW7ChXc80fGfQUrT4B0%2Fimg.png)
+* JVM 구조
+    * 클래스 로더(Class Loader): JVM내에 클래스를 로드하고 링크를 통해 배치하는 작업을 수행하는 모듈
+    * 실행 엔진(Execution Engine): 바이트 코드를 실행시키는 역할
+        * 인터프리터: 바이트 코드를 한줄씩 실행한다.
+        * JIT 컴파일러: 인터프리터의 효율을 높이기 위한 컴파일러로 인터프리터가 반복되는 코드를 발견하면 JIT 컴파일러가 반복되는 코드를 네이티브 코드로 변환하고 반복되는 코드를 인터프리터는 네이티브 코드로 변환된 컴파일 코를 바로 사용한다.
+    * Runtime Data Areas: 프로그램 실행 중에 사용되는 다양한 영역
+        * PC register: 쓰레드가 시작될 때 생성되며 현재 수행 중인 JVM 명령의 주소를 갖고 있는다.
+        * Stack Area: 지역 변수, 파라미터 등이 생성되는 영역으로 실제 객체는 Heap에 할당되고 해당 레퍼런스만 Stack에 저장된다.
+        * Heap Area: 동적으로 생성된 오브젝트와 배열이 저장되는 곳으로 GC의 대상 영역이다.
+        * Method Area: 클래스 멤버 변수, 메소드 정보, Type 정보, Constant Pool, static, final 변수 등이 생성된다. 상수 풀(Constant Pool)은 모든 Symbol Reference를 포함한다.
+    * JNI(Java Native Interface): 자바 애플리케이션에서 C, C++, 어셈블리어로 작성된 함수를 사용할 수 있는 방법을 제공해준다. Native 키워드를 통해서 메소드를 호출하고 대표적인 메소드로 currentThread()가 존재한다.
+    * Native Method Library: C, C++로 작성된 라이브러리다.
+
+
 ### 가비지 컬렉션(Garbage Collection, GC)
 * JVM의 힙 영역에서 불필요한 메모리를 정리해주는 역할입니다. 자바는 개발자가 직접 메모리를 해제하지 않기 때문에 그 역할을 가비지 컬렉션(Garbage Collection, GC)이 해당 역할을 수행합니다.
 * GC의 종류 중 한 종류인 Serial GC로 설명을 하면 Minor GC와 Major GC로 구분되는데 Minor GC는 Young 영역 Major GC는 Old 영역에서 일어 납니다.
