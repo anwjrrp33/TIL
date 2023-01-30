@@ -137,10 +137,63 @@ class Child extends Parent {
         * Session: 웹 세션이 생성되고 종료될 때까지 유지되는 스코프
         * Application: 웹 서블릿 컨텍스트와 같은 범위로 유지되는 스코프
 
+### Spring MVC와 Dispatcherservlet
+* Spring MVC는 기본적으로 MVC 패턴을 사용하는데 Front Controller인 Dispatcherservlet를 제공해서 Dispatcherservlet에서 MVC 아키텍쳐를 관리합니다.
+Front Controller은 각 요청에 맞는 컨트롤러를 찾아서 호출시키고 공통 코드에 대해서는 Front Controller에서 처리하고, 서로 다른 코드들만 각 Controller에서 처리할 수 있도록 합니다.
+    * 1. 서블릿 컨테어너에서 받은 HTTP 요청을 Dispatcherservlet에 할당한다.
+    * 2. Dispatcherservlet은 Handler Mapping을 통해 해당 요청을 알맞은 컨트롤러로 위임한다.
+    * 3. HandlerMapping을 통해 요청을 위임받은 컨트롤러는는 필요한 비즈니스 로직을 호출/수행하여 처리 결과를 생성하고 이 모델(M)과 출력될 뷰(View)를 Dispatcherservlet에 반환한다.
+    * 4. 컨트롤러로 부터 ModelAndView 정보를 전달받은 Dispatcherservlet은 ViewResolver란 클래스를 이용하여 사용자에게 출력할 View 객체를 얻는다.
+    * 5. ViewResolver를 통해 얻은 View객체를 통해 사용자에게 보여줄 화면을 출력한다.
+![Spring MVC 흐름](https://img1.daumcdn.net/thumb/R1280x0/?scode=mtistory2&fname=https%3A%2F%2Ft1.daumcdn.net%2Fcfile%2Ftistory%2F990EC6365AF152A503)
+
+### Servlet Filter와 Spring Interceptor의 차이
+* 필터(Filter)는 J2EE 표준 스펙 기능으로 디스패처 서블릿(Dispatcher Servlet)에 요청이 전달되기 전/후에 url 패턴에 맞는 모든 요청에 대해 부가작업을 처리할 수 있는 기능을 제공한다. 디스패처 서블릿은 스프링의 가장 앞단에 존재하는 프론트 컨트롤러이므로, 필터는 스프링 범위 밖에서 처리되고 웹 컨테이너이서 관리되지만 빈으로 등록은 된다
+    * init 메소드: 필터 객체를 초기화하고 서비스에 추가하기 위한 메소드
+    * doFilter 메소드: url-pattern에 맞는 모든 HTTP 요청이 디스패처 서블릿으로 전달되기 전에 웹 컨테이너에 의해 실행되는 메소드
+    * destroy 메소드: 필터 객체를 서비스에서 제거하고 사용하는 자원을 반환하기 위한 메소드
+![Filter 흐름](https://img1.daumcdn.net/thumb/R1280x0/?scode=mtistory2&fname=https%3A%2F%2Fblog.kakaocdn.net%2Fdn%2FbZQx9K%2Fbtq9zEBsJ75%2FdEAKj1HEymcKyZGZNOiA80%2Fimg.png)
+* 인터셉터(Interceptor)은 J2EE 표준 스펙인 필터(Filter)와 달리 Spring이 제공하는 기술로써, 디스패처 서블릿(Dispatcher Servlet)이 컨트롤러를 호출하기 전과 후에 요청과 응답을 참조하거나 가공할 수 있는 기능을 제공한다. 스프링 컨테이너에서 동작하며 디스패처 서블릿이 핸들러 매핑을 통해서 컨트롤러를 찾고 요청해 실행 체인이 반환되면 실행 체인에 등록된 인터셉터를 순차적으로 실행한다.
+    * preHandle 메소드: 컨트롤러가 호출되기 전에 실행
+    * postHandle 메소드: 컨트롤러를 호출된 후에 실행
+    * afterCompletion 메소드: 모든 뷰에서 최종 결과를 생성하는 일을 포함해 모든 작업이 완료된 후에 실행
+![Interceptor 흐름](https://img1.daumcdn.net/thumb/R1280x0/?scode=mtistory2&fname=https%3A%2F%2Fblog.kakaocdn.net%2Fdn%2FSz6DV%2Fbtq9zjRpUGv%2F68Fw4fZtDwaNCZiCFx57oK%2Fimg.png)
+
+![filter, interceptor 차이](https://img1.daumcdn.net/thumb/R1280x0/?scode=mtistory2&fname=https%3A%2F%2Fblog.kakaocdn.net%2Fdn%2Fcjsq60%2FbtrzjoZ0qcq%2FEDsLOVpZNcmFu6prkzALFk%2Fimg.png)
+
+### Spring AOP(Aspect Oriented Programming)
+* 관점 지향 프로그래밍이라고 불리며 어떤 로직을 기준으로 핵심적인 관점, 부가적인 관점으로 나누어서 보고 그 관점을 기준으로 모듈화 하겠다는 것이다. 
+    * Aspect : 흩어진 관심사를 모듈화 한 것. 
+    * Target : Aspect를 적용하는 곳. 클래스, 메서드 등..
+    * Advice : 실질적으로 어떤 일을 해야 할 지에 대한 것, 실질적인 부가기능을 담은 구현체
+    * Join Point : Advice가 적용될 위치 혹은 끼어들 수 있는 시점. 메서드 진입 시점, 생성자 호줄 시점, 필드에서 꺼내올 시점 등 끼어들 시점을 의미. 참고로 스프링에서  Join Point는 언제나 메서드 실행 시점을 의미 한다.
+    * Point Cut : Join Point의 상세한 스펙을 정의한 것. "A란 메서드의 진입 시점에 호출할 것"처럼 구체적으로 Advice가 실행될 시점을 정함.
+![AOP 개념 이미지](https://t1.daumcdn.net/cfile/tistory/994AA3335C1B8C9D28)
+
+## 인프라
+
 ## DB
 
 
-
 ## CS
+
+### RESTful API
+* RESTful API란 API 설계의 중심에 자원(Resource)이 있고 HTTP Method를 통해 자원을 처리하도록 설계입니다.
+    * REST 6 가지 원칙
+        * Uniform Interface
+        * Stateless
+        * Caching
+        * Client-Server
+        * Hierarchical system
+        * Code on demand
+* 추천 영상
+    * [그런 REST API로 괜찮은가?](https://www.youtube.com/watch?v=RP_f5dMoHFc)
+
+### TDD
+* TDD란 매우 짧은 개발 사이클의 반복에 의존하는 소프트웨어 개발 프로세스로 테스트케이스를 작성하고 해당 테스트를 통과하는 코드를 작성한다. 그 후 상황에 맞게 리팩토링 과정을 거치는데 테스트가 코드를 주도하는 개발 방식입니다.
+
+### MVC(Model And View)
+* 어플리케이션의 데이터에 해당하는 모델(M)과 이를 사용자에게 보여주는 뷰(V) 그리고 이를 제어하는 컨트롤러(C)로 구성되어 있으며 사용자 인터페이스와 비즈니스로직을 분리하여 개발하는 방식을 말합니다.
+
 
 
