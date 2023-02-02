@@ -1,14 +1,15 @@
 ## Java
 ### JVM(Java Virtual Machine)
 * JVM은 자바 가상 머신으로 자바 프로그램 실행환경을 만들어주는 소프트웨어입니다. 자바 애플리케이션을 컴파일하여 클래스 로더를 통해 실행합니다. 메모리 관리인 GC를 수행하며 스택 기반의 가상머신입니다. 자바는 JVM을 통해서 실행되기 때문에 운영체제에 종속적이지 않고 어떠한 플랫폼에도 영향을 받지 않고 동일하게 수행됩니다.
-![Java 기본 실행 과정](https://img1.daumcdn.net/thumb/R1280x0/?scode=mtistory2&fname=https%3A%2F%2Fblog.kakaocdn.net%2Fdn%2F56cSc%2FbtruTEtjRXJ%2Fr1JNTkEuEeY8cSKtqcXCRK%2Fimg.png) 
+<img src="https://img1.daumcdn.net/thumb/R1280x0/?scode=mtistory2&fname=https%3A%2F%2Fblog.kakaocdn.net%2Fdn%2F56cSc%2FbtruTEtjRXJ%2Fr1JNTkEuEeY8cSKtqcXCRK%2Fimg.png" width=400 height=300/>
+
 *  JVM 동작 방식
     * 1. 자바 프로그램이 실행되면 JVM은 OS로 부터 메모리를 할당받는다.
     * 2. 자바 컴파일러가 자바 코드(.java)를 자바 바이트코드(.class)로 컴파일한다.
     * 3. 자바 바이트코드를 클래스 로더를 통해서 Runtime Data Area로 로딩한다.
     * 4. Runtime Data Area에 로딩된 자바 바이트 코드를 Execution Engine을 통해서 해석한다.
     * 5. 해석된 바이트 코드는 Runtime Data Area의 각 영역에 배치되어 수행하며 Execution Engine에 의해서 GC 작동과 쓰레드 동기화가 된다.
-![JVM 동작 방식](https://img1.daumcdn.net/thumb/R1280x0/?scode=mtistory2&fname=https%3A%2F%2Fblog.kakaocdn.net%2Fdn%2FcQRqku%2Fbtru0vJ6Ixx%2F9qCTW7ChXc80fGfQUrT4B0%2Fimg.png)
+<img src="https://img1.daumcdn.net/thumb/R1280x0/?scode=mtistory2&fname=https%3A%2F%2Fblog.kakaocdn.net%2Fdn%2FcQRqku%2Fbtru0vJ6Ixx%2F9qCTW7ChXc80fGfQUrT4B0%2Fimg.png" width=400 height=330/>
 * JVM 구조
     * 클래스 로더(Class Loader): JVM내에 클래스를 로드하고 링크를 통해 배치하는 작업을 수행하는 모듈
     * 실행 엔진(Execution Engine): 바이트 코드를 실행시키는 역할
