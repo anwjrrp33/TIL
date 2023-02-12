@@ -1,8 +1,7 @@
 # Chapter2 아키텍처 개요
 
 ## 2.1 네 개의 영역
-* 표현, 응용, 도메인, 인프라스트럭처는 아키텍처를 설계할 떄 출현하는 전혁적인 네 가지 영역이다. 
-* [레이어드 아키텍처](https://stylishc.tistory.com/144)라고 표현한다.
+표현, 응용, 도메인, 인프라스트럭처는 아키텍처를 설계할 떄 출현하는 전혁적인 네 가지 영역이다.
 
 ### 표현(Presentation) 영역
 * 사용자의 요청을 받아 응용 영역에 전달하고 응용 역역 처리 결과를 다시 사용자에게 보여주는 역할을 한다.
@@ -42,4 +41,101 @@ public class CancelOrderService {
 <img src="./그림 2.3.png">
 
 도메인, 응용, 표현 영역은 구현 기술을 사용한 코드를 직접 만들지 않고 인프라스트럭처 영역에서 제공한 기능을 사용해서 필요한 기능을 개발한다.
-*  예를 들어 DB에 보관된 데이터가 필요하면 인프라스트럭처 영역의 DB 모듈을 사용하여 데이터를 읽어오고 외부에 메일을 발송해야 한다면 인프라스트럭처가 제공하는 SMTP 연결 모듈을 이용해서 메일을 발송한다.
+* DB에 보관된 데이터가 필요하면 인프라스트럭처 영역의 DB 모듈을 사용하여 데이터를 읽어오고 외부에 메일을 발송해야 한다면 인프라스트럭처가 제공하는 SMTP 연결 모듈을 이용해서 메일을 발송한다.
+
+## 2.2 [계층 구조 아키텍처](https://dev-coco.tistory.com/166)
+네 영역을 구성할 떄 많이 사용되는 아키텍처는 계층 구조이다. 표현, 응용 영역은 도메인 영역을 사용하고 도메인 영역은 인프라스트럭처 영역을 사용하므로 계층 구조를 적용하기에 적당하다. 도메인 복잡도에 따라 응용과 도메인을 분리하기도 하고 한 계층으로 합치기도 한다.
+
+<img src="./그림 2.4.png">
+
+계층 구조는 특성상 상위 계층에서 하위 계층으로의 의존만 존재하고 하위 계층은 상위 계층에 의존하지 않는다.
+* 표현 계층은 응용 계층에 의존하고 응용 계층이 도메인 계층에 의존하지만 반대로 인프라스트럭쳐 계층이 도메인에 의존하거나 도메인이 응용 계층에 의존하지 않는다.
+엄격하게 적용하면 상위 계층은 바로 아래의 계층에만 의존을 가져야 하지만 구현의 편리함을 위해 계층 구조를 유연하게 적용한다.
+* 응용 계층은 바로 아래 계층인 도메인 계층에 의존하지만 외부 시스템과의 연동을 위해 더 아래 계층인 인프라 스트럭처 계층에 의존하기도 한다.
+
+계층 구조를 엄격하게 적용한다면 상위 계층은 바로 아래의 계층에만 의존을 가져야 하지만 구현의 편리함을 위해 계층 구조를 유연하게 적용한다.
+* 응용 계층은 바로 아래 계층인 도메인 계층에 의존하지만 외부 시스템과의 연동을 위해 더 아래 계층인 인프라 스트럭처 계층에 의존하기도 한다.
+
+<img src="./그림 2.5.png">
+
+응용 영역과 도메인 영역은 DB나 외부 시스템 연동을 위해 인프라스트럭처의 기능을 사용하므로 이런 계층 구조를 사용하는 것은 직관적으로 이해하기 쉽다.
+    * 표현, 응용, 도메인 계층이 상세한 구현 기술을 다루는 인프라스트럭처 계층에 종속된다.
+    
+
+아래의 코드는 인프라스트럭처 영역의 Drools 룰 엔진을 사용해서 할인 금액을 계산하는 코드인데 응용 영역은 가계 계산을 위해서 DroolsRuleEngine을 사용해서 구현하고 있다. DroolsRuleEngine이 제공하는 타입을 사용하지 않아서 의존적이지 않다고 보이지만 DroolsRuleEngine을 사용하기 위한 특화된 코드가 존재하기 때문에 실제로는 인프라스트럭처 영역에 의존하고 있다.
+    * 인프라스트럭처에 의존하면 테스트 어려움과 기능 확장의 어려움이라는 두 가지 문제가 발생한다.
+```
+public class DroolsRuleEngine { 
+    private KieContainer kContainer;
+    
+    public DroolsRuleEngine() {
+        KieServices ks = KieServices.Factory.get(); 
+        kContainer = ks.getKieClasspathContainer();
+    }
+    
+    public void evalute(String sessionName^ List<?> facts) { 
+        KieSession kSession = kContainer.newKieSession(sessionName); 
+        try {
+            facts.forEach(x -> kSession.insert(x));
+            kSession.fireAURules(); 
+        } 
+        finally {
+            kSession.dispose(); 
+        }
+    }
+}
+```
+```
+public class DroolsRuleEngine { 
+    private KieContainer kContainer;
+
+    public DroolsRuleEngine() {
+        KieServices ks = KieServices.Factory.get(); 
+        kContainer = ks.getKieClasspathContainer();
+    }
+
+    public void evalute(String sessionName^ List<?> facts) { 
+        KieSession kSession = kContainer.newKieSession(sessionName); 
+        
+        try {
+            facts.forEach(x -> kSession .insert(x));
+            kSession .fireAURules (); 
+        } finally {
+            kSession.disposeO; 
+        }
+    }
+}
+```
+
+<img src="./그림 2.6.png">
+
+## 2.3 [DIP(Dependency Inversion Principle)](https://huisam.tistory.com/entry/DIP)
+가격 할인 계산을 하려면 아래 그림과 같이 고객 정보를 구해야 하고 구한 고객 정보와 주문 정보를 이용해야 한다.
+* CalculateDiscountService는 고수준 모듈이다.
+* 고수준 모듈은 의미있는 단일 기능을 제공하는 모듈로 CalculateDiscountSerivice는 가격 할인 계산이라는 기능을 구현한다.
+* 가격 할인 계산과 고객 정보를 구해야하는 기능은 하위 기능이다.
+* 저수준 모듈은 하위 기능을 실제로 구현한 것이다.
+* 고수준 모듈이 제대로 동작하려면 저수쥰 모듈을 사용해야 하는데 고수준 모듈이 저수준 머듈을 사용하면 앞서 계층 구조 아키텍처에서 언급했던 두 가지 문제인 구현 변경과 테스트가 어렵다는 문제가 발생한다. 이 문제를 해결하기 위해서 DIP는 저수준 모듈이 고수준 모듈에 의존하도록 바꾸며 추상화한 인터페이스를 통해서 구현한다.
+
+<img src="./그림 2.7.png">
+
+DIP를 적용하면 아래 그림과 같이 저수준 모듈이 고수준 모듈에 의존하게 된다.
+    * 저수준 모듈이 고수준 모듈에 의존한다고 해서 SOLID 5원칙 중 하나인 DIP 의존 역전 원칙이라고 부른다.
+
+<img src="./그림 2.9.png">
+
+저수준 모듈에 직접 의존했다면 해당 모듈이 만들어지기 전까지 테스트를 할 수 없지만 DIP가 지켜질 경우 대역 객체를 사용해 테스트를 진행할 수 있다.
+
+### DIP 주의사항
+* DIP를 잘못 생각하면 단순히 인터페이스와 구현 클래스를 분리하는 정도로 받아들일 수 있다.
+* DIP의 핵심은 고수준 모듈이 저수준 모듈에 의존하지 않도록 하기 위함이므로 저수준 모듈에서 인터페이스만 추출한다고 DIP가 될 수 없다.
+
+<img src="./그림 2.10.png">
+
+### DIP와 아키텍처
+* 인프라스트럭처 계층이 제일 하단에 위치하는 계층형 구조와 달리 아키텍처에 DIP를 적용하면 인프라스트럭처 영역이 응용 영역과 도메인 영역에 의존(상속)하는 구조가 된다.
+* 도메인과 응용 영역에 대한 영향을 최소화하여 구현 기술(인프라스트럭처)을 변경하는 것이 가능하며 DIP를 항상 적용할 필요는 없고 구현 기술에 따라 의존적인 코드를 도메인에 일부 포함하는게 효과적일 때도 있다.
+* DIP를 무조건 적용하려 하지말고 DIP의 이점을 얻는 수준에서 적용 범위를 검토를 해야한다.
+<img src="./그림 2.11.png">
+
+## 2.4 도메인 영역의 주요 구성요소
