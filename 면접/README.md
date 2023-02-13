@@ -341,3 +341,90 @@ Front Controller은 각 요청에 맞는 컨트롤러를 찾아서 호출시키�
     * 생성자를 통해서 객체를 생성하지 않고 빌더라는 내부 클래스를 통해서 객체를 생성하는 패턴으로 인수 전달이 쉬워지며 결합도를 낮출 수 있다.
 * 싱글톤 패턴
     * 객체의 인스턴스가 오직 1개만 생성되는 패턴으로 미리 생성된 객체의 인스턴스를 다른 객체의 인스턴스에서 전역으로 사용해 공유한다. 고정된 메모리 영역을 사용하기 때문에 메모리 낭비를 방지할 수 있다. 하지만 사용 시 여러가지 단점들이 있어서 trade-off를 고려해야한다.
+
+
+## [팩토리 메소드 패턴과 추상 팩토리 패턴](https://fvor001.tistory.com/63)
+* `팩토리 메소드 패턴`은 객체를 생성하는 인터페이스는 미리 정의하고 객체 생성은 서브 클래스인 팩토리로 위임하는 패턴입니다. 아래의 코드는 노트북이라는 인터페이스가 존재하고 LG노트북과 삼성노트북은 노트북이라는 인터페이스를 상속받습니다. 하지만 실제로 코드를 구현할때 노트북을 바로 생성하는 것이 아닌 노트북 팩토리를 통해서 노트북을 생성받습니다.
+```
+public interface Notebook {
+
+}
+
+public class LGNotebook implements Notebook {
+	public LGNotebook() {
+		System.out.println("LG 노트북");
+	}
+}
+
+public class SamSungNotebook implements Notebook{
+	public SamSungNotebook() {
+		System.out.println("SamSung 노트북");
+	}
+}
+
+public class NotebookFactory {
+	public Notebook createNotebook(String type) {
+		Notebook notebook = null;
+		switch (type) {
+		case "LG":
+			notebook = new LGNotebook();
+			break;
+		case "SamSung":
+			notebook = new SamSungNotebook();
+			break;
+		}
+		return notebook;
+	}
+}
+```
+* `추상 팩토리 패턴`은 서로 연관되거나 의존적인 객체들의 조합을 만드는 인터페이스를 제공하는 패턴입니다. 아래의 코드를 보면 팩토리 인터페이스를 통해서 각각의 구현 인터페이스를 메소드로 제공해주고 있습니다 각각의 구현 인터페이스를 제공해주는 팩토리 클래스에 추상화된 팩토리 인터페이스를 제공해줘서 서로 연관있는 객체들의 조합을 하나의 인터페이스로 구현할 수 있습니다.
+```
+public interface NewComputerFactory {
+	public Notebook createNotebook();
+	public Mouse createMouse();
+}
+
+public class LGComputerFactory implements NewComputerFactory{
+
+	@Override
+	public LGNotebook createNotebook() {
+		return new LGNotebook();
+	}
+
+	@Override
+	public LGMouse createMouse() {
+		return new LGMouse();
+	}
+}
+
+public class SamSungComputerFactory implements NewComputerFactory{
+	@Override
+	public SamSungNotebook createNotebook() {
+		return new SamSungNotebook();
+	}
+
+	@Override
+	public SamSungMouse createMouse() {
+		return new SamSungMouse();
+	}
+}
+
+public class Factory {
+	public void createComputer(String type){
+        NewComputerFactory newcomputerFactory= null;
+        switch (type){
+            case "LG":
+            	newcomputerFactory = new LGComputerFactory();
+                break;
+
+            case "SamSung":
+            	newcomputerFactory = new SamSungComputerFactory();
+                break;
+        }
+
+        newcomputerFactory.createNotebook();
+        newcomputerFactory.createMouse();
+    }
+}
+```
+* 두 패턴의 차이는 `팩토리 메소드 패턴`은 각각 다른 객체들이 필요할 때 사용하며, `추상 팩토리 패턴`은 서로 연관있는 객체들의 조합이 필요할 때 사용합니다.
