@@ -128,3 +128,129 @@ public class JpaOrderViewDao implements OrderViewDao {
         * 한 대의 DB 장비로 대응할 수 없는 수준의 트래픽이 발생하면 캐시나 조회 전용 저장소는 필수로 선택하는 기법
 
 ## 애그리거트 간 집합 연관
+* 애그리거트 간 1-N과 M-N 연관
+    * 1-N 연관
+        * 컬렉션을 이용한 연관으로 카테고리와 상품 간의 연관이 대표적이다.
+        * 애그리거트 간 1-N 관계는 Set과 같은 컬렉을 이요해서 표현할 수있다.
+            ```
+            public class Category {
+                private Set<Product> products; // 다른 애그리거트에 대한 1-N 연관
+            }
+            ```
+        * 보통 목록 관련은 페이징을 처리하는ㄷ 1-N 연관을 이용해서 구현하면 실제 테이블의 데이터가 많다면 코드를 실행할 때마다 실행속도가 급격히 느려져 성능에 심각한 문제를 일으킨다.
+            ```
+            public class Category {
+                private Set<Product> products;
+
+                public List<Product> getProducts(int page, int size) {
+                    List<Product> sortedProducts = sortById(products);
+                    return sortedProducts.subList((page - 1) * size, page * size);
+                }
+            }
+            ```
+        * 개념적으로 1-N 연관이 있더라도 성능 문제 때문에 애그리거트 간의 1-N 연관을 실제 구현에 반영하지 않는다.
+        * 카테고리에 속한 상품을 구할 필요가 없다면 상품 입장에서 자신이 속한 카테고리를 N-1로 연관지어서 구하면 된다. 또한 그 연관을 이용해서 특정 카테고리에 속한 상품 목록을 구하면 된다.
+            ```
+                public class Product {
+                    private Categoryld categoryld;
+                }
+            ```
+            ```
+            public class ProductListService {
+                public Page<Product> getProductOf Category (Long categoryld, int page) int size) {
+                    Category category = categoryRepository.findByld(categoryld);
+                    checkcategory(category);
+                    List<Product> products = productRepository.findByCategoryldCcategory.getldO, page, size);
+                    int totalCount = productRepository.countsByCategoryld(category.getld());
+                    return new Page(page, size, totalCount, products);
+                }
+            }
+            ```
+    * M-N 연관
+        * M-N 연관은 개념적으로 양쪽 애그리거트에 컬렉션으로 연관을 만드는데 상품이 여러 카테고리에 속할 수 있다면 상품과 카테고리는 M-N 연관을 맺는다.
+        * M-N 연관도 실제 요구사항을 고려하여 M-N 연관을 구현에 포함시킬지 결졍해야 한다.
+        * 보통 특정 카테고리에 속한 상품 목록을 보여줄 때 목록 화면에서 각 상품이 속한 카테고리를 상품 정보에 표시하지 않고 상품 상세 화면에서만 필요 하기 때문에 집합 연관이 필요하지 않다. 즉 상품에서 카테고리로의 집합 연관만 존재하면 되고 상품에서 카테고리로의 단방향 M-N 연관만 구현하면 된다.
+        ```
+        public class Product {
+            private Set<CategoryId> categoryIds;
+        }
+        ```
+        * RDBMS에서 M-N을 구현할려면 조인 테이블을 사용
+        * JPA를 이용해서 매핑을 하면 ID 참조를 이용한 M-N 단방향 연관을 구현이 가능한데 밸류 타입에 대한 컬렉션 매핑을 사용할 수 있다.
+        ```
+        ©Entity
+        @Table(name = "product")
+        public class Product {
+            @EmbeddedId
+            private Productld id;
+
+            @ElementCollection
+            @CollectionTable(name = "product_category", joinColumns = @JoinColumn(name = "product_id"))
+            private Set<CategoryId> categorylds;
+        }
+        ```
+        * JPQL의 member of 연산자를 이용해서 특정 카테고리에 속한 상품을 구할 수 있다.
+        ```
+        ©Repository
+        public class JpaProductRepository implements ProductRepository {
+            @PersistenceContext
+            private EntityManager entityManager;
+            
+            @Override
+            public List<Product> findByCategoryld(Categoryld catld, int page, int size) {
+                TypedQuery<Product> query = entityManager.createQuery(
+                    "select p from Product p "+
+                    "where :catld member of p.categorylds order by p.id.id desc", Product.class);
+                query.setParameter("catId", catld);
+                query.setFirstResult((page - 1) * size);
+                query.setMaxResults(size);
+                return query.getResultList0；
+            }
+        }
+        ```
+
+## 애그리거트를 팩토리로 사용하기
+* 온라인 쇼핑몰에서 고객이 여러 차례 신고를 해서 특정 상점이 더 이상 물건을 등록하지 못하도록 차단한 상태라고 가정 해보는 경우 코드가 나빠 보이지는 않지만 중요한 도메인 로직 처리가 응용 서비스에 노출된다.
+```
+public class RegisterProductService {
+  public ProductId registerNewProduct(NewProductRequest req) {
+    Store store = storeRepository.findById(req.getStoreId());
+    checkNull(store);
+    if (!store.isBlocked()) {
+      throw new StoreBlockedException();
+    }
+    ProductId id = productRepository.nextId();
+    Product product = new Product(id, store.getId(), ...);
+    productRepository.save(product);
+    return id;
+  }
+}
+```
+* Store 가 Product 를 생성할 수 있는지 여부를 판단하고 Product 를 생성하는 것은 논리적으로 하나의 도메인 기능인데 이 도메인 기능을 응용 서비스에서 구현되고 있다.
+* 별도 도메인 서비스나 팩토리 클래스를 만들 수도 있지만 이 기능을 Store 애그리거트에 옮겨보는 경우 아래 코드와 같이 구현된다.
+* Store 애그리거트의 createProduct() 는 Product 애그리거트를 생성하는 팩토리 역할을 하면서 도메인 로직을 구현하고 있다.
+```
+public class Store {
+  public Product createProduct(ProductId newProductId, ...) {
+    if (isBlocked()) {
+      throw new StoreBlockedException();
+    }
+    return new Product(newProductId, getId(), ...);
+  }
+}
+```
+* 더 이상 응용서비스에서 Store 의 상태를 확인하지 않게되고 이제 Product 생성 가능 여부를 확인하는 도메인 로직을 변경해도 응용서비스가 영향을 받지 않는다.
+* 도메인 응집도가 높아지는데 애그리거트를 팩토리로 사용할 때 얻을수 있는 장점이다.
+* 애그리거트가 갖고 있는 데이터를 이용해서 다른 애그리거트를 생성해야 한다면 애그리거트에 팩토리 메서드를 구현하는 것을 고려해본다.
+* Store 애그리거트라 Product 애그리거트를 생성할 때 많은 정보를 알아야 한다면 직접 생성하지 않고 다른 팩토리에 위임하는 방법도 존재한다.
+```
+public class Store {
+  public Product createProduct(ProductId newProductld, Productinfo pi) {
+    if (isBlocked()) {
+      throw new StoreBlockedException();
+    }
+    return new Product(newProductId, getId(), ...);
+  }
+}
+```
+* 다른 팩토리에 위임하더라도 차단 상태의 상점은 상품을 만들 수 없다는 도메인 로직은 한곳에 계속 위치한다는 점이다.
