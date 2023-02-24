@@ -9,4 +9,18 @@
 <br/><img src="./그림 4.1.png">
 
 ### 리포지터리 기본 기능 구현
-* 
+* 리포지터리가 제공하는 기본 기능
+    * ID로 애그리거트 조회하기
+    * 애그리거트 저장하기
+    ```
+    public interface OrderRespository {
+        Order findById(OrderNo no);
+        void save(Order order);
+    }
+    ```
+* 인터페이스는 애그리거트 루트를 기준으로 작성한다.
+* 애그리거트를 조회하는 기능의 이름을 작성할 때 널리 사용되는 규칙은 `findBy프로퍼티이름(프로퍼티 값)` 형식이다.
+* 애그리거트를 조회할 때 존재하지 않으면 null을 리턴하는데 null을 사용하고 싶지 않으면 Optional을 사용한다.
+```
+Optional<Order> findById(OrderNo no);
+```
