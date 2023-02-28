@@ -48,3 +48,37 @@ public class MemoryOrderRepository implements OrderRepository {
 * 모든 애그리거트 객체를 메모리에 보관하기도 어렵고 설사 메모리에 다 보관할 수 있다 하더라도 조회 성능에 심각한 문제가 발생하기 때문에 실제 스펙은 사용하는 기술에 맞춰 구현하게 된다.
 
 ## 스프링 데이터 JPA를 이용한 스펙 구현
+* 스프링 데이터 JPA는 검색 조건을 표현하기 위한 인터페이스인 Specification을 제공한다.
+* 제네릭 타입 파라미터 T는 JPA 엔티티 타입을 의미한다.
+```
+public interface Specification<T> extends Serializable {
+  // not, where, and, or 메서드 생략
+
+  @Nullable
+  Predicate toPredicate(Root<T> root, CriteriaQuery query, CriteriaBuilder cb);
+}
+```
+* toPredicat() 메서드는 JPA 크리테리아(Criteria) API에서 조건을 표현하는 Predicate를 생성한다.
+* OrdererIdSpec 클래스는 Specification<OrderSummary> 타입을 구현하므로 OrderSummary에 대한 검색 조건을 표현한다.
+* toPredicate() 메서드는 ordererId 프로퍼티 값이 생성자로 전달받은 ordererId와 동일한지 비교하는 Predicate를 생성한다.
+```
+// 스펙 인터페이스를 구현한 클래스 예시
+public class OrdererldSpec implements Specification<OrderSummary> {
+    
+    private String ordererld;
+    
+    public OrdererIdSpec(String ordererld) {
+        this.ordererld = ordererld;
+    }
+
+    ©Override
+    public Predicate toPredicate(Root<OrderSummary> root, CriteriaQuery<?> query, CriteriaBuilder cb) {
+        return cb.equal(root.get(OrderSummary_.ordererId), ordererld);
+    }
+}
+```
+* 스펙 구현 클래스를 개별적으로 만들지 않고 별도 클래스에 스펙 생성 기능을 모아도 된다.
+```
+// 스펙 생성 기능을 별도 클래스에 모은 예
+
+```
