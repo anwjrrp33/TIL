@@ -157,6 +157,52 @@ Specification<OrderSummary> spec = Specification.where(createNull.ableSpec()).an
 ```
 // 특정 프로퍼티를 조회하는 find 메서드는 이름 뒤에 OrderBy를 사용해서 정렬 순서를 지정하는 코드 예시
 public interface OrderSummaryDao extends Repository<OrderSummary, String> { 
+    // ordererId 프로퍼티 값을 기준으로 검색 조건 지정
+    // number 프로퍼티 값 역순으로 정렬
+    List<OrderSummary> findByOrdererIdOrderByNumberDesc(String ordererld);
+    // number 프로퍼티 값을 오름차순으로 정렬
     List<OrderSummary> findByOrdererIdOrderByNumberDesc(String ordererld);
 }
 ```
+* 메서드 이름 통해서 정렬을 하면 간단하지만 정렬 기준이 많아지면 메서드 이름이 길어지는 단점이 존재한다. 이런 경우에는 Sort 타입을 사용해서 처리가 가능하다.
+```
+// Sort 타입을 파라미터로 사용한 예시
+public interface OrderSummaryDao extends Repository<OrderSummary, String> { 
+   List<OrderSummary> findByOrdererId(String ordererldj Sort sort); 
+   List<OrderSummary> findAll(Specification<OrderSummary> spec, Sort sort); 
+}
+```
+```
+// Sort를 사용한 구현 예시
+Sort sort = Sort.by("number").ascendingO;
+List<OrderSummary> results = OrderSummaryDao.findByOrdererldf(user1", sort);
+// 오름차순
+Sort sort1 = Sort.by("number").ascending();
+// 역순
+Sort sort2 = Sort.by("orderDate").descending();
+// 두 개 이상의 정렬 순서
+Sort sort = sort1.and(sort2);
+// 체이닝은 통한 짧은 표현
+Sort sort = Sort.by("number")
+    .ascending()
+    .and(Sort.by("orderDate").descending());
+```
+
+## 페이징 처리하기
+* 목록을 보여줄 때 전체 데이터 중 일부만 보여주는 페이징 처리는 기본인데 스프링 데이터 JPA는 페이칭 처리를 위해 Pagealbe 타입을 이용한다.
+```
+// 레파지토리 구현 예시
+public interface MemberDataDao extends JpaRepository<MemberData, String> {
+    List<Member>
+}
+```
+```
+// 코드 구현 예시
+PageRequest pageReq = PageRequest.of(1, 10);
+List<MemberData> user = memberDataDao.findByNameList("사용자%",  pageReq);
+```
+
+## 스펙 조합을 위한 스펙 빌더 클래스
+
+
+## 동적 인스턴스 생성
