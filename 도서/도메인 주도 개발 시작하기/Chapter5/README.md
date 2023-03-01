@@ -79,6 +79,84 @@ public class OrdererldSpec implements Specification<OrderSummary> {
 ```
 * 스펙 구현 클래스를 개별적으로 만들지 않고 별도 클래스에 스펙 생성 기능을 모아도 된다.
 ```
-// 스펙 생성 기능을 별도 클래스에 모은 예
+// 스펙 생성 기능을 별도 클래스에 모은 예시
+public class OrderSummarySpecs {
+    public static Specification<OrderSummary> ordererId(String ordererld) {
+        return (Root<OrderSummary> root, CriteriaQuery<?> query, CriteriaBuilder cb) -> cb.equal(root.<String>get("ordererld"), ordererld);
+    }
 
+    public static Specification<OrderSummary> orderDateBetween( LocalDateTime from, LocalDateTime to) {
+        return (Root<OrderSummary> root, CriteriaQuery<?> query, CriteriaBuilder cb) -> cb.between(root.get(OrderSummary_.orderDate), from, to);
+    } 
+}
+```
+```
+// 스펙 생성 기능 클래스를 이용한 코드
+Specification<OrderSummary> betweenSpec = OrderSummarySpecs.orderDateBetween(from, to);
+```
+
+## 리포지터리/DAO에서 스펙 사용하기
+* 스펙을 충족하는 엔티티를 검색하고 싶다면 findAll() 메서드를 사용하면 된다.
+```
+// 메서드를 사용하는 예시
+public interface OrderSummaryDao extends Repository<OrderSummary, String> {
+    List<OrderSummary> findAll.(Specification<OrderSummary> spec);
+}
+```
+* 스펙 구현체를 사용하면 특정 조건을 충족하는 엔티티를 검색할 수 있다.
+```
+// 코드 단위로 사용하는 예시
+// 스펙 객체를 생성하고
+Specification<OrderSummary> spec = new OrdererIdSpec("user1"); 
+// findAllO 메서드를 이용해서 검색
+List<OrderSummary> results = OrderSummaryDao.findAll(spec);
+```
+
+## 스펙 조합
+* 스프링 데이터 JPA가 제공하는 스펙 인터페이스는 스펙을 조합할 수 있는 `and`와 `or`를 제공하고 있다.
+```
+// and와 or 메서드를 제공하는 스펙 인터페이스
+public interface Specification<T> extends Serializable {
+
+  default Specification<T> and(@Nullable Specification<T> other) { ... }
+  default Specification<T> or(@Nullable Specification<T> other) { ... }
+  
+  @Nullable
+  Predicate toPredicate(Root<T> root, CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder);
+}
+```
+* and()와 or() 메서드는 기본 구현을 가진 디폴트 메서드이다.
+* `and()` 메서드는 두 스펙을 모두 충족하는 조건을 표현하는 스펙을 생성하고 `or()` 메서드는 두 스펙 중 하나 이상 충족하는 조건을 표현하는 스펙을 생성한다.
+```
+// and()와 or()의 사용 예시
+Specification<OrderSummary> specl = OrderSummarySpecs.ordererId("userl"); 
+Specification<OrderSummary> spec2 = OrderSummarySpecs.orderDateBetween(
+    LocaWateTime.of(2022, 1, 1, 0, 0, 0),
+    LocalDateTime.of(2022, 1, 2, 0, 0, 0)); 
+Specification<OrderSummary> spec3 = spec1.and(spec2);
+Specification<OrderSummary> spec3 = spec1.or(spec2);
+```
+```
+// 체이닝을 통한 불필요한 변수 사용 제거
+Specification<OrderSummary> spec = OrderSummarySpecs.ordererId("user1")
+    .and(OrderSummarySpecs.orderDateBetween(from, to));
+```
+* `not()` 메서드 또한 제공하는데 조건을 반대로 적용할 때 사용한다.
+```
+Specification<OrderSummary> spec = Specification.not(OrderSummarySpecs.ordererld(user1"));
+```
+* null 가능성이 있는 스펙과 다른 스펙을 조합해야하면 NullPointerException이 발생할 수 있는데 코드를 통해서 null을 검사하면 매우 힘들기 때문에 `where()` 메서드를 사용하면 해당 문제를 방지할 수 있다.
+```
+Specification<OrderSummary> spec = Specification.where(createNull.ableSpec()).and(createOtherSpec());
+```
+
+## 정렬 지정하기
+* 스프링 데이터 JPA는 두 가지 방법을 사용해서 정렬을 지정할 수 있다.
+    * 메서드 이름에 OrderBy를 사용해서 정렬 기준 지정
+    * Sort를 인자로 전달 
+```
+// 특정 프로퍼티를 조회하는 find 메서드는 이름 뒤에 OrderBy를 사용해서 정렬 순서를 지정하는 코드 예시
+public interface OrderSummaryDao extends Repository<OrderSummary, String> { 
+    List<OrderSummary> findByOrdererIdOrderByNumberDesc(String ordererld);
+}
 ```
