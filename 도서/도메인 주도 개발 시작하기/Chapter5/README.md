@@ -71,7 +71,7 @@ public class OrdererldSpec implements Specification<OrderSummary> {
         this.ordererld = ordererld;
     }
 
-    ©Override
+    @Override
     public Predicate toPredicate(Root<OrderSummary> root, CriteriaQuery<?> query, CriteriaBuilder cb) {
         return cb.equal(root.get(OrderSummary_.ordererId), ordererld);
     }
@@ -100,7 +100,7 @@ Specification<OrderSummary> betweenSpec = OrderSummarySpecs.orderDateBetween(fro
 ```
 // 메서드를 사용하는 예시
 public interface OrderSummaryDao extends Repository<OrderSummary, String> {
-    List<OrderSummary> findAll.(Specification<OrderSummary> spec);
+    List<OrderSummary> findAll(Specification<OrderSummary> spec);
 }
 ```
 * 스펙 구현체를 사용하면 특정 조건을 충족하는 엔티티를 검색할 수 있다.
@@ -201,8 +201,156 @@ public interface MemberDataDao extends JpaRepository<MemberData, String> {
 PageRequest pageReq = PageRequest.of(1, 10);
 List<MemberData> user = memberDataDao.findByNameList("사용자%",  pageReq);
 ```
+* Page와 Sort를 사용하면 정렬 순서를 지정할 수 있다.
+```
+// Page와 Sort를 사용한 코드 구현 예시
+Sort sort = Sort.by("name").descending();
+PageRequest pageReq = PageRequest.of(1, 2, sort);
+List<MemberData> user = memberDataDao.findByNameLike("사용자%", pageReq);
+```
+* Page 타입을 사용하면 데이터 목록뿐만 아니라 조건에 해당하는 전체 개수도 구할 수 있다.
+```
+public interface MemberDataDao extends Repository<MemberData, String> { 
+    Page<MemberData> findByBlocked(boolean blocked, Pageable pageable);
+}
+```
+* Pageable을 사용하는 메서드 `리턴 타입이 Page인 경우에만` 스프링 데이터 JPA는 목록 조회 쿼리와 함께 COUNT 쿼리도 실행해서 조건에 해당하는 개수도 함께 조회한다.
+
+```
+// Page가 제공하는 메서드의 일부 예시
+Pageable pageReq = PageRequest.of(2, 3);
+Page<MemberData> page = memberDataDao.findByBlocked(false, pageReq); 
+List<MemberData> content = page.getC아itent(); // 조회 결과 목록
+long totalElements = page.getTotalElements(); // 조건에 해당하는 전체 개수 
+int totalPages = page.getTotalPages(); // 전체 페이지 번호
+int number = page.getNumber(); // 현재 페이지 번호
+int numberOfElements = page.getNumberOfElementsO; // 조회 결과 개수
+int size = page.getSizeQ; // 페이지 크기
+```
+* 스펙을 사용하는 findAll() 메서드도 Pageable을 사용할 수 있다.
+```
+public interface MemberDataDao extends Repository<MemberData, String> {
+     Page<MemberData> findAll(Specification<MemberData> spec, Pageable pageable);
+}
+```
+* 처음부터 N개의 데이터가 필요하다면 Pageable을 사용하지 않고 find에 FirstN또는 TopN 형식의 메서드 를 사용할 수도 있다.
+```
+// findFirstN 사용 예시
+List<MemberData> findFirst3ByNameLikeOrderByName(String name);
+// topN 사용 예시
+List<MemberData> findTop3ByNameLikeOrderByName(String name);
+// N이 없는 경우 하나만 리턴하는데 사용 예시
+MemberData findFirstByBlockedOrderByld(boolean blocked);
+MemberData findTopByBlockedOrderByld(boolean blocked)
+```
 
 ## 스펙 조합을 위한 스펙 빌더 클래스
-
+* 스펙을 생성하다 보면 다음 코드처럼 조건에 따라 스펙을 조합해야 할 때가 있다.
+```
+// 스펙 조합 코드 예시
+Specification<MemberData> spec = Specification.where(null);
+if(searchRequest.isOnlyNotBlocked()) {
+	spec = spec.and(MemberDataSpecs.nonBlocked());
+}
+if(StringUtils.hasText(searchRequest.getName())) {
+	spec = spec.and(MemberDataSpecs.nameLike(searchRequest.getName()));
+}
+List<MemberData> results = memberDataDao.findAll(spec, PageRequest.of(0, 5));
+```
+* 스펙을 조합하게 되면 if와 각 스펙들이 섞여서 복잡한 구조를 가지게 되는데 이때 스펙 빌더를 사용해서 코드 가독성을 높이고 구조를 단순하게 작성할 수 있다.
+```
+// 체이닝을 통한 변수할당과 if문을 줄이는 코드 예시
+Specification<MemberData> spec = SpecBuilder.builder(MemberData.class)
+	.ifTrue(searchRequest.isOnlyNotBlocked(),
+    	() -> MemberDataSpecs.nonBlocked())
+    .ifHasText(searchRequest.getName(),
+    	name -> MemberDataSpecs.nameLike(searchRequest.getName()))
+    .toSpec();
+List<MemberData> result = memberDataDao.findAll(spec, PageRequest.of(0, 5));
+```
+* 스펙 빌더 클래스는 and(), ifHasText(), ifTrue() aㅔ서드가 존재하는데 이 외에 필요한 메서드는 추가해서 사용하면 된다.
+```
+public class SpecBuilder {
+	public static <T> Builder<T> build(Class<T> type) {
+    	return new Builder<T>();
+    }
+    
+    public static class Builder<T> {
+    	private List<Specification<T>> specs = new ArrayList<>();
+        
+        public Builder<T> and(Specification<T> spec) {
+        	specs.add(spec);
+            return this;
+        }
+        
+        public Builder<T> ifHasText(String str, 
+        	Function<String, Specification<T>> specSupplier) {
+            if(StringUtils.hasText(str)) {
+                specs.add(specSupplier.apply(str));
+            }
+            return this;
+        }
+        
+        public Builder<T> ifTrue(Boolean cond, 
+        	Supplier<Specification<T>> specSupplier) {
+         	if(cond != null && cond.booleanValue()) {
+            	specs.add(specSupplier.get());
+            }
+            return this;
+        }
+        
+        public Specification<T> toSpec() {
+        	Specification<T> spec = Specification.where(null);
+            for(Specification<T> s : specs) {
+            	spec = spec.and(s);
+            }
+            return spec;
+        }
+    }
+}
+```
 
 ## 동적 인스턴스 생성
+* JPA는 쿼리 결과에서 임의의 객체를 동적으로 생성할 수 있는 기능을 제공하고 있다.
+```
+// JPQL에서 동적 인스턴스를 사용한 코드
+public interface OrderSummaryDao extends Repository<OrderSummary, String> {
+    
+    @Query("""
+        select new com.myshop.order.query.dto.OrderView(
+            o.number, o.state, m.name, m.id, p.name 
+        )
+        from Order o join o.orderLines ol, Member m, Product p 
+        where o.orderer.memberld.id = :ordererld
+        and o.orderer.memberld.id = m.id
+        and index(ol) = 0
+        and ol.productld.id = p.id 
+        order by o.number.number desc
+        """)
+    List<OrderView> findOrderView(String ordererld);
+```
+* 표현영역을 통해 사용자에게 데이터를 보여주기 위해 조회 전용 모델을 만든다.
+* 밸류타입을 원하는 형식으로 출력하도록 프레임워클르 확장해서 조회 전용 모델에서 밸류 타입의 의미가 사라지지 않도록 할 수 있다.
+```
+// 조회 전용 모델
+ public class Orderview {
+    private final String number; 
+    private final Orderstate state; // 밸류타입
+    private final String memberName; 
+    private final String memberld; 
+    private final String productName;
+
+    public OrderView(OrderNo number, Orderstate state. String memberName, Memberld memberld, String productName) { 
+        this.number = number.getNumber();
+        this.state = state; 
+        this.memberName = memberName; 
+        this.memberld = memberld.getld(); 
+        this.productName = productName;
+    }
+    
+    ... // get 메서드
+}
+```
+* 동적 인스턴스의 장점은 JPQL을 그대로 사용하므로 객체 기준으로 쿼리를 작성하면서도 동시에 지연/즉시 로딩과 같은 고민 없이 원하는 모습으로 데이터를 조회할 수 있다.
+
+## 하이버네이트 @Subselect 사용
