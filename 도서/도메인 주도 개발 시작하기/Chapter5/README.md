@@ -168,7 +168,7 @@ public interface OrderSummaryDao extends Repository<OrderSummary, String> {
 ```
 // Sort 타입을 파라미터로 사용한 예시
 public interface OrderSummaryDao extends Repository<OrderSummary, String> { 
-   List<OrderSummary> findByOrdererId(String ordererldj Sort sort); 
+   List<OrderSummary> findByOrdererId(String ordererld, Sort sort); 
    List<OrderSummary> findAll(Specification<OrderSummary> spec, Sort sort); 
 }
 ```
@@ -193,7 +193,7 @@ Sort sort = Sort.by("number")
 ```
 // 레파지토리 구현 예시
 public interface MemberDataDao extends JpaRepository<MemberData, String> {
-    List<Member>
+    List<Member> findByNameLike(String name, Pageable pageable)
 }
 ```
 ```
@@ -354,3 +354,63 @@ public interface OrderSummaryDao extends Repository<OrderSummary, String> {
 * 동적 인스턴스의 장점은 JPQL을 그대로 사용하므로 객체 기준으로 쿼리를 작성하면서도 동시에 지연/즉시 로딩과 같은 고민 없이 원하는 모습으로 데이터를 조회할 수 있다.
 
 ## 하이버네이트 @Subselect 사용
+* 하이버네이트는 JPA 확장 기능으로 @Subselect를 제공한다.
+* @Subselect는 쿼리 결과를 @Entity로 매핑할 수 있는 유용한 기능이다.
+* @Immutable, @Subselect, @Synchronize는 하이버네이트 전용 애너테이션으로 해당 태그를 사용해서 테이블이 아닌 쿼리 결과를 @Entity로 매핑할 수 있다.
+* @Subselect는 조회 쿼리를 값으로 가지는데 이렇게 조회한 @Entity는 매핑된 테이블이 없기 때문에 수정을 할 수 없다.
+* 만약 수정을 하게 된다면 하이버네이트는 오류가 발생하게 된다. 이 때 @Immutable를 통해서 해당 엔티티 매핑 필드/프로퍼티가 변경되도 DB에 반영되지 않고 무시한다.
+```
+// 쿼리로 매핑하는 코드 예시
+@Entity
+@Immutable
+@Subselect(
+        """
+        select o.order_number as number,
+        o.version,
+        o.orderer_id,
+        o.orderer_name,
+        o.total_amounts,
+        o.receiver_name,
+        o.state,
+        o.order_date,
+        p.product_id,
+        p.name as product_name
+        from purchase_order o inner join order_line ol
+            on o.order_number = ol.order_number
+            cross join product p
+        where
+        ol.line_idx = 0
+        and ol.product_id = p.product_id"""
+)
+@Synchronize({"purchase_order", "order_line", "product"})
+public class OrderSummary {
+    @Id
+    private String number;
+    private long version;
+    @Column(name = "orderer_id")
+    private String ordererId;
+    @Column(name = "orderer_name")
+    private String ordererName;
+    ...생략
+
+    protected OrderSummary() {
+}
+    }
+```
+* 하이버네이트는 일반적으로 트랙잭션을 커밋하는 시점에 DB에 반영하는데 변경 내역을 아직 반영하지 않은 상태에서 다시 조회하게 되면 최신 값이 담기지 않게 된다.
+* 이런 문제를 해소하기 위해서 @Synchronize를 사용하는데 @Synchronize에 해당 엔티티와 관련된 테이블 목록을 명시하고 엔티티를 로딩하기 전 지정한 테이블과 관련된 변경이 발생하면 플러시를 먼저한다.
+```
+// purchase_order 테이블에서 조회
+Order order = orderRepository.findById(orderNumber);
+order.changeShippingInfo(newInfo); // 상태 변경
+// 변경 내역이 DB에 반영되지 않았는데 purchase_order 테이블에서 조회
+List<OrderSummary> summaries = orderSummaryRepository.findByOrdererld(userid);
+```
+* @Subselect를 사용해도 일반 @Entity와 같기 때문에 EntityManger#find(), JPQL, Criteria를 사용해서 조회하는 장점이 있다. 스펙또한 사용이 가능하다.
+```
+// @Subselect를 적용한 @Entity는 일반 @Entity와 동일한 방법으로 조회할 수 있다.
+Specification<OrderSummary> spec = orderDateBetween(from, to);
+Pageable pageable = PageRequest.of(1, 10);
+List<OrderSummary> results = orderSummaryDao.findAll(spec, pageable);
+```
+* 서브 쿼리를 사용하고 싶지 않다면 네이티브 SQL 쿼리를 사용하거나 마이바티스와 같은 별도 매퍼를 사용해서 조회 기능을 구현해야 한다.
