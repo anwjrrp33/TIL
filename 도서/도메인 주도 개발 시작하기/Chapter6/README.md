@@ -84,3 +84,22 @@ public class ChangePasswordServicelmpl implements ChangePasswordService {
 
 ### 6.3.4 표현 영역에 의존하지 않기
 * 응용 서비스의 파라미터 타입을 결정할 때 주의할 점은 표현 영역과 관련된 타입을 사용하면 안 된다는 점이다.
+```
+// 응용 서비스가 표현 영역을 의존하는 코드 예시
+@Controller 
+@RequestMapping("/member/changePassword") 
+public class MemberPasswordController {
+    @PostMapping
+    public String submit(HttpServletRequest request) {
+        try {
+            // 응용 서비스가 표현 영역을 의존하면 안 됨!
+            // HttpServletRequest나 HttpSession을 응용 서비스에 파라미터로 전달하면 안 됨
+            changePasswordService.changePassword(request); 
+        } catch(NoMemberException ex) {
+            // 알맞은 익셉션 처리 및 응답
+        } 
+    }
+}
+```
+* 응용 서비스에서 표현 영역에 대한 의존이 발생하면 응용 서비스만 단독으로 테스트하기 어려워지며 표현 영역의 구현이 변경되면 응용 서비스의 구현도 함께 변경해야 하는 문제가 발생한다.
+* 심각한 점은 응용 서비스가 표현 영역의 역할까지 대신하는 상황이 벌어질 수도 있다.
