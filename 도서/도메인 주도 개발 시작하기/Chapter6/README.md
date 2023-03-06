@@ -103,3 +103,25 @@ public class MemberPasswordController {
 ```
 * 응용 서비스에서 표현 영역에 대한 의존이 발생하면 응용 서비스만 단독으로 테스트하기 어려워지며 표현 영역의 구현이 변경되면 응용 서비스의 구현도 함께 변경해야 하는 문제가 발생한다.
 * 심각한 점은 응용 서비스가 표현 영역의 역할까지 대신하는 상황이 벌어질 수도 있다.
+* 표현 영역에 의존을 하지 않는 가장 쉬운 방법은 서비스 메서드의 파라미터와 리턴 타입으로 표현 영역의 구현 기술을 사용하지 않는 것이다.
+
+### 6.3.5 트랜잭션 처리
+* 트랜잭션과 관련된 문제로 트랙잭션을 관리하는 것은 응용 서비스의 중요한 역할이다.
+* 스프링과 같은 프레임워크가 제공하는 트랜잭션 관리 기능을 이용하면 쉽게 트랜잭션을 처리 할 수 있다.
+```
+public class ChangePasswordService {
+    // 스프링의 경우 @Transactional을 사용해서 처리
+    @Transactional
+    public void changePassword(ChangePasswordRequest req) {
+        Member member = findExistingMember(req.getMemberld());
+        member.changePassword(req.getCurrentPassword(), req.getNewPassword()); 
+    }
+    ...
+}
+```
+
+## 6.4 표현 영역
+* 표현 영역의 책임은 크게 다음과 같다.
+    * 사용자가 시스템을 사용할 수 있는 흐름(화면)을 제공하고 제어한다.
+    * 사용자의 요청을 알맞는 응용 서비스에 전달하고 결과를 사용자에게 제공한다.
+    * 사용자의 세션을 관리한다.
