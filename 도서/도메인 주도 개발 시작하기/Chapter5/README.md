@@ -224,7 +224,7 @@ List<MemberData> content = page.getC아itent(); // 조회 결과 목록
 long totalElements = page.getTotalElements(); // 조건에 해당하는 전체 개수 
 int totalPages = page.getTotalPages(); // 전체 페이지 번호
 int number = page.getNumber(); // 현재 페이지 번호
-int numberOfElements = page.getNumberOfElementsO; // 조회 결과 개수
+int numberOfElements = page.getNumberOfElements(); // 조회 결과 개수
 int size = page.getSizeQ; // 페이지 크기
 ```
 * 스펙을 사용하는 findAll() 메서드도 Pageable을 사용할 수 있다.
