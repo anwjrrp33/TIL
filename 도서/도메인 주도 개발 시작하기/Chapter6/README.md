@@ -167,3 +167,18 @@ public class ChangePasswordService {
             }
     * 도메인
         * 도메인 단위로 권한 검사를 해야 하는 경우는 다소 구현이 복잡해진다.
+        * 예를 들어, 게시글 삭제는 본인 또는 관리자 역할을 가진 사용자만 할 수 있다고 해보자. 이 경우 게시글 작성자가 본인인지 확인하려면 게시글 애그리거트를 먼저 로딩해야한다.즉, 응용 서비스의 메서드 수준에서 권한 검사를 할 수 없기 때문에 직접 권한 검사 로직을 구현해야 한다.
+            ```
+            public class DeleteArticleService {
+                public void delete(String userid, Long articleld) {
+                    Article article = articleRepository.findByld(articleId);
+                    checkArticleExistence(article);
+                    permissionService..checkDeletePermission(userId, article);
+                    article.markDeleted();
+                }
+                ...
+            }
+            ```
+        * 스프링 시큐리티와 같은 보안 프레임워크를 확장해서 개별 도메인 객체 수준의 권한 검사 기능을 프레임워크에 통합할 수도 있다. 하지만 이는 프레임워크에 대한 높은 이해가 필요하다. 이해도가 높지않아 확장이 원하는 수준으로 안된다면 도메인에 맞는 권한 검사 기능을 직접 구현하는것이 코드 유지 보수에 유리하다.
+
+## 6.7 조회 전용 기능과 응용 서비스
