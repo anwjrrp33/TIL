@@ -39,7 +39,23 @@
 
 선점 잠금은 보통 DBMS 가 제공하는 행 단위 잠금을 사용해서 구현한다. 오라클을 비롯한 다수 DBMS 가 for update 와 같은 쿼리를 사용해서 특정 레코드에 한 사용자만 접근할 수 있는 잠금 장치를 제공한다.
 
-JPA 의 EntityManager 를 사용할 경우 LockModeType.PESSIMISTIC_WRITE 사용하고 스프링 데이터 JPA 사용시 @Lock(LockModeType.PESSIMISTIC_WRITE) 사용한다.
-```
-Order order = entityManager.find(Order.class, orderNo, LockModeType.PESSIMISTIC_WRITE);
-```
+JPA의 EntityManager를 사용할 경우 LockModeType.PESSIMISTIC_WRITE 사용한다. 스프링 데이터 JPA 사용시 @Lock(LockModeType.PESSIMISTIC_WRITE) 사용한다.
+* JPA EntityManager는 LockModeType을 인자로 받는 find () 메서드를 제공한다.
+LockModeType.PESSIMISTIC_WRITE를 값으로 전달하면 해당 엔티티와 매핑된 테이블을
+이용해서 선점 잠금 방식을 적용한다.
+    ```
+    // JPA EntityManager는 LockModeType을 인자로 받는 find() 메서드를 제공한다.
+    Order order = entityManager.find(Order.class, orderNo, LockModeType.PESSIMISTIC_WRITE);
+    ```
+* JPA 프로바이더와 DBMS에 따라 잠금 모드 구현이 다르다. 하이버네이트의 경우 PESSIMISTIC_WRITE를 잠금 모드로 사용하면 for update 쿼리를 이용해서 선점 잠금을 구현한다.
+    ```
+    // 스프링 데이터 JPA는 @Lock 애너테이션을 사용해서 잠금 모드를 지정한다.
+    public interface MemberRepository extends Repository<Member, MemberId> {
+        @Lock(LockModeType.PESSIMISTICJWRITE)
+        @Query("select m from Member m where m.id = :id")
+        Optional<Member> findByIdForUpdate(@Param("id") MemberId memberId);
+    }
+    ```
+
+### 8.2.1 선점 잠금과 교착 상태
+선점 잠금 기능을 사용할 때는 잠금 순서에 따른 교착 상태(deadlock)가 발생하지 않도록 주의해야한다.
