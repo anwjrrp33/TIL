@@ -67,3 +67,45 @@ LockModeType.PESSIMISTIC_WRITE를 값으로 전달하면 해당 엔티티와 매
 4. 스레드2: A 애그리거트에 대한 선점 잠금 시도
 
 이 순서에 따르면 스레드1은 영원히 B애그리거트에 대한 선점 잠금을 구할 수 없다. 스레드2가 B애그리거트에 대한 잠금을 이미 선점하고 있기 때문인데, 동일한 이유로 스레드2는 A애그리거트에 대한 잠금을 구할 수 없다. 두 스레드는 상대방 스레드가 먼저 선점한 잠금을 구할 수 없어 더 이상 다음 단계를 진행하지 못하게 되고, 스레드1과 스레드2는 `교착 상태`에 빠지게 된다.
+
+선점 잠금에 따른 교착 상태는 상대적으로 사용자 수가 많을 때 발생할 가능성이 높고, 사용자 수가 많아지면 교착 상태에 빠지는 스레드는 더 빠르게 증가하게 된다. 더 많은 스레드가 교착 상태에 빠질수록 시스템은 아무것도 할 수 없는 상태가 된다.
+
+이런 문제가 발생하지 않도록 하려면 잠금을 구할 때 최대 대시 시간을 지정해야 한다. 
+JPA에서 선점 잠금을 시도할 때 최대 대기 시간을 지정하려면 다음과 같이 힌트를 사용하면 된다.
+```
+Map<String, Object> hints = new HashMap<>();
+hints.put("javax.persistence.lock.timeout", 2000);
+Order order = entityManager.find(Order.class, orderNo, LockModeType.PESSIMISTIC_WRITE, hints);
+```
+지정한 시간 이내에 잠금을 구하지 못하면 익셉션을 발생시킨다. 
+이 힌트를 사용할 때 주의할 점은 DBMS에 따라 힌트가 적용되지 않을 수도 있다는 것이다. 
+힌트를 이용할 때에는 사용 중인 DBMS가 관련 기능을 지원하는지 확인해야 한다.
+
+스프링 데이터 JPA는 @QueryHints 애너테이션을 사용해서 쿼리 힌트를 지정할 수 있다.
+```
+public interface MemberRepository extends Repository<Member, MemberId> { 
+    @Lock(LockModeType.PESSIMISTIC少 RITE)
+    @QueryHints({
+        @QueryHint(name = "javax.persistence.lock.timeout", value = "2000")
+    })
+    @Query("select m from Member m where m.id = :id")
+    Optional<Member> findByIdForUpdate(@Param("id") MemberId memberId);
+```
+
+## 8.3 비선점 잠금
+선점 잠금이 강력해 보이지만 선점 잠금으로 모든 트랜잭션 충돌 문제가 해결되는 것은 아니다.
+
+<img src="./그림 8.4.png">
+
+1. 운영자는 배송을 위해 주문 정보를 조회한다. 시스템은 정보를 제공한다.
+2. 고객이 배송지 변경을 위해 변경 폼을 요청한다. 시스템은 변경 폼을 제공한다.
+3. 고객이 새로운 배송지를 입력하고 폼을 전송하여 배송지를 변경한다.
+4. 운영자가 1번에서 조회한 주문 정보를 기준으로 배송지를 정하고 배송 상태 변경을 요청한다.
+
+운영자가 배송지 정보 조회 후 배송상태로 변경하는 동안 고객이 배송지를 변경할 경우 선점 잠금으로 해결할 수 없는데 이때 필요한 것이 `비선점 잠금`이다.
+비선점 잠금은 `동시에 접근하는 것을 막는 대신 변경한 데이터를 실제 DBMS에 반영하는 시점에 변경 가능 여부를 확인하는 방식`이다.
+
+비선점 잠금을 구현하려면 애그리거트에 버전으로 사용할 숫자 타입 프로퍼티를 추가해야하며 애그리거트를 수정할 때마다 버전으로 사용할 프로퍼티 값이 1씩 증가한다.
+```
+UPDATE aggtable SET version = version + 1, colx = ?, coly = ? WHERE aggid = ? and version = 현재버전
+```
