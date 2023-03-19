@@ -8,3 +8,4 @@
 * [Chapter6 응용 서비스와 표현 영역](./Chapter6)
 * [Chapter7 도메인 서비스](./Chapter7)
 * [Chapter8 애그리거트 트랜잭션 관리](./Chapter8)
+* [Chapter9 도메인 모델과 바운디드 컨텍스트](./Chapter9)

@@ -109,3 +109,138 @@ public interface MemberRepository extends Repository<Member, MemberId> {
 ```
 UPDATE aggtable SET version = version + 1, colx = ?, coly = ? WHERE aggid = ? and version = 현재버전
 ```
+이 쿼리는 수정할 애그리거트와 매핑되는 테이블의 버전 값이 현재 애그리거트의 버전과 동일한 경우에만 수정하며, 수정에 성공 시 버전 값을 1 증가시킨다. 다른 트랜잭션이 먼저 수정해서 버전 값이 변경하면 실패한다.
+
+<img src="./그림 8.5.png">
+
+JPA는 버전을 이용한 비선점 잠금 기능을 지원한다.
+버전으로 사용할 필드에 @Version 애너테이션을 붙이고 매핑되는 테이블에 버전을 저장할 컬럼을 추가하면 된다.
+```
+@Entity
+@Table(name = "purchage_order")
+@Access(AccessType.FIELD)
+public class Order {
+    @EmbeddedId
+    private OrderNo number;
+
+    @Version  
+    private long version;
+  
+    ...
+}
+```
+
+JPA는 엔티티가 변경되어 쿼리를 싱핼할 때 @Version에 명시한 필드를 이용해서 비선점 잠금 쿼리를 실행한다.
+애그리거트 객체의 버전이 같은 경우에만 데이터를 수정한다.
+```
+UPDATE purchase_order SET ".생략，version = version + 1 WHERE number = ? and version = 10
+```
+
+응용 서비스는 버전을 알 필요가 없다. 
+리포지터리에서 필요한 애그리거트를 구하고 알맞은 기능만 실행하면 된다.
+기능 실행 과정에서 애그리거트 데이터가 변경되면 JPA는 트랜잭션 종료 시점에 비선점 잠금을 위한 쿼리를 실행한다.
+```
+@Transactional
+public void changeshipping(ChangeShippingRequest changeReq) {
+    Order order = orderRepository.findById(new OrderNo(changeReq.getNumber())); 
+    checkNoOrder(order);
+    order.changeShippinglnfo(changeReq.getShippinglnfoO);
+}
+...
+```
+비선점 잠금을 위한 쿼리를 실행할 때 쿼리 실행 결과로 수정된 행의 개수가 0이면
+이미 누군가 앞서 데이터를 수정한 것이다. 
+이는 트랜잭션이 충돌한 것이므로 트랜잭션 종료 시점에 OptimisticLockingFailureException 익셉션이 발생한다.
+```
+@PostMapping ("/changeshipping")
+public String changeShipping(ChangeShippingRequest changeReq) {
+    try { 
+        changeShippingService.changeShipping(changeReq); 
+        return "changeShippingSuccess";
+    } catch (OptimisticLockingFailureException ex) {
+        // 누군가 먼저 같은 주문 애그리거트를 수정했으므로
+        // 트랜잭션이 충돌했다는 메시지를 보여준다.
+        return "changeShippingTxConflict";
+    }
+}
+...
+```
+
+버전이 동일한 경우에만 애그리거트 수정 기능을 수행하도록 함으로써 트랜잭션 충돌 문제를 해소할 수 있다.
+비선점 잠금 방식을 여러 트랜잭션으로 확장하려면 애그리거트 정보를 뷰로 보여줄 때 버전 정보도 함께 사용자 화면에 전달해야 한다.
+응용 서비스에서 전달받은 버전 값을 이용해서 애그리거트 버전이 일치하는지 확인하고, 일치하는 경우에만 기능을 수행한다.
+* VersionConflictException: 이미 누군가가 애그리거트를 수정했다는 것을 의미
+* OptimisticLockingFailureException: 누군가가 거의 동시에 애그리거트를 수정했다는 것을 의미
+
+### 8.3.1 강제 버전 증가
+애그리거트에 애그리거트 루트 외에 다른 엔티티가 존재하는데 기능 실행 도중 루트가 아닌 다른 엔티티의 값만 변경된다고 하자 
+연관된 엔티티의 값이 변경된다고 해도 루트 엔티티 자체의 값은 바뀌는 것이 없으므로 버전 값을 갱신하지 않는다. 
+따라서 애그리거트 내에 어떤 구성요소의 상태가 바뀌면 루트 애그리거트의 버전 값을 증가해야 비선점 잠금이 올바르게 동작한다.
+
+JPA는 이런 문제를 처리할 수 있도로 EntityManager.find() 메서드로 엔티티를 구할때 강제로 버전 값을 증가시키는 잠금 모드를 지원하고 있다.
+```
+Repository
+public class JpaOrderRepository implements OrderRepository {
+	@PersistenceContext
+	private EntityMangager entityManager;
+
+	@Override
+	public Order findbyIdOptimisticLockMode(OrderNo id) {
+		return entityManager.find(Order.class, id, LockModeType.OPTIMISTTIC_FORCE_INCREMENT);
+	}
+...
+```
+LockModeType.OPTIMISTTIC_FORCE_INCREMENT를 사용하면 해당 엔티티의 상태가 변경되었는지에 상관없이 트랜잭션 종료 시점에 버전 값 증가 처리를 한다.
+이 잠금 모드를 사용하면 루트 엔티티가 아닌 다른 엔티티나 밸류가 변경되더라도 버전 값을 증가시킬 수 있으므로 비선점 잠금 기능을 안전하게 적용할수 있다.
+스프링 데이터 JPA를 사용하면 @Lock 애너테이션을 이용해서 지정하면 된다.
+
+## 8.4 오프라인 선점 잠금
+더 엄격하게 데이터 충돌을 막고 싶다면 누군가 수정 화면을 보고 있을 때 수정 화면 자체를 실행하지 못하하도록 해야한다.
+한 트랜잭션 범위에서만 적용되는 선점 잠금 방식이나 나중에 버전 충돌을 확인하는 비선점 잠금 방식으로는 이를 구현할 수 없다.
+이 때 필요한 것이 오프라인 선점 잠금 방식이다.
+
+단일 트랜잭션에서 동시 변경을 막는 선점 잠금 방식과 달리 오프라인 선점 잠금은 여러 트랜잭션에 걸쳐 동시 변경을 막는다. 첫 번째 트랜잭션을 시작할 때 오프라인 잠금을 선점하고, 마지막 트랜잭션에서 잠금을 해제한다.
+잠금을 해제하기 전까지 다른 사용자는 잠금을 구할 수 없다.
+
+<img src="./그림 8.8.png">
+
+잠금을 해제하지 않은 경우 다른 사용자는 영원히 잠금을 구할 수 없는 상황이 발생하기에 오프라인 선점 방식은 잠금 유효 시간을 가져야 한다.
+예를 들어 수정 폼에서 1분 단위로 Ajax 호출을 해서 잠금 유효 시간을 1분씩 증가시키는 방법이 있다.
+
+### 8.4.1 오프라인 선점 잠금을 위한 LockManager 인터페이스와 관련 클래스
+오프라인 선점 잠금은 크게 네 가지 기능이 필요하다.
+* 잠게 잠금 선점 시도
+* 잠금 확인
+* 잠금 해제
+* 잠금 유효시간 연장
+
+LockManager라는 인터페이스에서 기능을 수행한다.
+```
+public interface LockManager {
+    LockId tryLock(String type, String id) throws LockException;
+    
+    void checkLock(LockId lockId) throws LockException;
+    
+    void releaseLock(LockId lockId) throws LockException;
+
+    void extendLockExpiration(LockId lockId, long inc) throws LockException;
+```
+
+잠금시 반드시 주어진 lockId를 갖는 잠금이 유효한지 검사해야한다.
+* 잠금의 유효 시간이 지났으면 이미 다른 사용자가 잠금을 선점한다.
+* 잠금을 선점하지 않은 사용자가 기능을 실행했다면 기능 실행을 막아야 한다.
+
+### 8.4.2 DB를 이용한 LockManager 구현
+잠금 정보를 저장할 테이블과 인덱스를 생성한다.
+```
+create table locks (
+    `type` varchar(255),
+    id varchar(255),
+    lockid varchar(255), 
+    expiration_time datetime, 
+    primary key (`type`, id)
+) character set utf8;
+
+create unique index locks idx ON locks (lockid);
+```
+DB 연동은 스프링이 제공하는 JdbcTemplate를 사용하며, SpringLockManager를 통해서 코드를 구현한다.
