@@ -40,3 +40,94 @@
 <img src = "./그림 9.5.png"/><br>
 
 모든 바운디드 컨텍스트를 반드시 도메인 주도로 개발할 필요는 없다.<br>
+복잡한 도메인 로직을 갖지 않은 경우엔 서비스-DAO 구조로 CRUD 방식으로 구현해도 된다.<br>
+<img src = "./그림 9.6.png"/><br>
+
+한 바운디드 컨텍스트에서 두 방식을 혼합해서 사용할 수도 있다.<br>
+대표적인 예가 CQRS 패턴이다.<br>
+CQRS(Command Query Responsibility Segregation)는 상태를 변경하는 명령 기능과 내용을 조회하는 쿼리 기능을 위한 모델을 구분하는 패턴이다.<br>
+<img src = "./그림 9.7.png"/><br>
+
+각 바운디드 컨텍스트는 서로 다른 구현 기술을 사용할 수도 있다.<br>
+바운디드 컨텍스트가 반드시 사용자에게 보여지는 UI를 가지고 있어야 하는 것은 아니며 JSON 데이터를 알맞게 가공해서 응답할 수도 있다.<br>
+
+## 9.4 바운디드 컨텍스트 간 통합
+온라인 쇼핑 사이트에서 매출 증대를 위해 카탈로그 하위 도메인에 개인화 추천 기능을 도입하 기로 했다고 하는 경우 기존 카탈로그 시스템을 개발하던 팀과 별도로 추천 시스템을 담당하는 팀 이 새로 생겨서 이 팀에서 주도적으로 추천 시스템을 만들기로 가정을 했다. 이 경우 카탈로그 하 위 도메인에는 기존 카탈로그를 위한 바운디드 컨텍스트와 추천 기능을 위한 바운디드 컨텍스트가 생긴다.<br>
+<img src = "./그림 9.10.png"/><br>
+
+두 팀이 관련된 바운디드 컨텍스트를 개발하면 자연스럽게 두 바운디드 컨텍스트 간 통합이 발생한다.
+* 사용자가 제품 상세 페01지를 볼 때, 보고 있는 상품과 유사한 상품 목록을 하단에 보여준다.
+
+카탈로그 컨텍스트와 추천 컨텍스트의 도메인 모델은 서로 다르다.<br>
+카탈로그는 제품을 중심으로 도메인 모델을 구현하지만 추천은 추천 연산을 위한 모델을 구현한다.<br>
+
+카탈로그 시스템은 추천 시스템으로부터 추천 데이터를 받아오지만, 카탈로그 시스템에서는 추천의 도메인 모델을 사용하기보다는 카탈로그 도메인 모델을 사용해서 추천 상품을 표현해야 한다.<br>
+```
+// 상품 추천 기능을 표현하는 도메인 서비스
+public interface ProductRecommendationService {
+    List<Product> getRecommendationOf(ProductId id);
+}
+```
+
+도메인 서비스를 구현한 클래스는 인프라스트럭처 영역에 위치한다.<br>
+이 클래스는 외부 시스템과의 연동을 처리하고 외부 시스템의 모델과 현재 도메인 모델 간의 변환을 책임진다.<br>
+<img src = "./그림 9.11.png"/><br>
+
+외부 추천 시스템이 제공하는 API는 카탈로그 도메인 모델과 일치하지 않을 수 있다.
+```
+[
+    {itemID: 'PROD-1000', type: 'PRODUCT', rank: 100},
+    {itemID: 'PROD-1001', type: 'PRODUCT', rank: 54}
+]
+```
+
+RecSystemClient는 REST API로부터 데이터를 읽어와 카탈로그 도메 인에 맞는 상품 모델로 변환한다.
+```
+public class RecSystemClient implements ProductRecommendationService {
+
+  private ProductRepository productRepository;
+
+  @Override
+  public List<Product> getRecommendationOf(ProductId id) {
+    List<Recommendation> items = getRecItems(id.getValue());
+    return toProducts(items);
+  }
+
+  private List<RecommendationItem> getRecItems(String itemId) {
+    // externalRecClient는 외부 추천 시스템을 위한 클라이언트라고 가정
+    return externalRecClient.getRecs(itemId);
+  }
+
+  private List<Product> toProducts(List<RecommendationItem> items) {
+    return items.stream()
+        .map(item -> toProductId(item.getItemId()))
+        .map(prodId -> productRepository.findById(prodId))
+        .collect(toList());
+  }
+
+  private ProductId toProductId(String itemId) {
+    return new ProductId(itemId);
+  }
+```
+
+두 모델 간의 변환 과정이 복잡하면 변환 처리를 위한 별도 클래스를 만들고 이 클래스에서 변환을 처리해도 된다.
+<img src = "./그림 9.12.png"/><br>
+
+REST API를 호출하는 것은 두 바운디드 컨텍스트를 직접 통합하는 방법이며 직접 통합하는 대신 간접적으로 통합하는 방법도 있다.<br>
+대표적으로 메시지 큐를 사용하는 것이다.<br>
+<img src = "./그림 9.13.png"/><br>
+
+메세지 큐를 사용할 경우 두 바운디드 컨텍스트가 사용할 메세지의 데이터 구조를 맞춰야 한다.<br>
+각각의 바운디드 컨텍스트를 담당하는 팀은 서로 만나서 주고받을 데이터 형식에 대해 협의해야 한다.<br>
+
+어떤 도메인 관점에서 모델을 사용하느냐에 따라 두 바운디드 컨텍스트의 구현 코드가 달라지 게 된다.<br>
+<img src = "./그림 9.14.png"/><br>
+<img src = "./그림 9.15.png"/><br>
+
+두 바운디드 컨텍스트를 개발하는 팀은 메시징 큐에 담을 데이터의 구조를 협의하게 되는데 그 큐를 누가 제공하느냐에 따라 데이터 구조가 결정된다.<br>
+한쪽에서 메세지를 출판하고 다른 쪽에서 구독하는 출판/구독 모델을 따른다.<br>
+<img src = "./그림 9.16.png"/><br>
+
+큐로 인해 `비동기`로 데이터를 전달하는 것을 제외하면 REST API를 사용해서 데이터를 전달하는 것과 차이가 없다.<br>
+
+## 9.5 바운디드 컨텍스트 간 관계
