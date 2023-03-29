@@ -138,7 +138,10 @@ mysql> SELECT RELEASE_ALL_LOCK();  // 모든 네임드 락 해제
 ### 5.2.4 메타데이터 락
 메타데이터 락은 데이터베이스 객체(대표적으로 테이블이나 뷰 등)의 이름이나 구조를 변경하는 경우에 획득하는 잠금이다.<br>
 명시적으로 획득하거나 해제할 수 있는 것이 아니며, RENAME TABLE 명령과 같이 테이블 이름 변경 시, 자동 획득하는 잠금이다.<br>
-RENAME TABLE 명령은 원본 이름과 변경 이름 모두 한꺼번에 잠금을 성정한다.<br>
+RENAME TABLE 명령은 원본 이름과 변경 이름 모두 한꺼번에 잠금을 설정한다.<br>
+MySQL 서버의 DDL은 단일 스레드로 작동하기 때문에 많은 시간이 소모된다.<br>
+테이블의 구조를 변경할 때 새로운 구조의 테이블을 생성하고 먼저 최근(1시간 직전 또는 하루 전)의 데이터까지는 프라이머리 키 인 id 값을 범위별로 나눠서 여러 개의 스레드로 빠르게 복사한다.<br>
+
 
 ## 5.3 InnoDB 스토리지 엔진 잠금
 InnoDB 스토리지 엔진은 MySQL에서 제공하는 잠금과는 별개로 `스토리지 엔진 내부에서 레코드 기반의 잠금 방식`을 탑재하고 있다.<br>
@@ -238,5 +241,82 @@ mysql> SHOW PROCESSLIST;
 * DIRTY READ: 커밋되지 않은 데이터를 데이터를 다른 트랜잭션에서 읽는 상황
 * NON-REPEATABLE READ: 한 트랜잭션에서 같은 쿼리를 두번 수행할 때 그 사이에 다른 트랜잭션이 값을 수정 또는 삭제함으로써 두 쿼리의 결과가 다르게 나타나는 현상
 * PHANTOM READ: 한 트랜잭션 안에서 일정 범위의 레코드를 두번 이상 읽었을 때, 첫번째 쿼리에서 없던 레코드가 두번째 쿼리에서 나타나는 현상. 이는 트랜잭션 도중 새로운 레코드가 삽입되는 것을 허용하기 때문에 발생
-<table><thead><tr><th></th><th>DIRTY READ</th><th>NON-REPEATABLE READ</th><th>PHANTOM READ</th></tr></thead><tbody><tr><td>READ UNCOMMITTED</td><td>발생</td><td>발생</td><td>발생</td></tr><tr><td>READ COMMITTED</td><td>없음</td><td>발생</td><td>발생</td></tr><tr><td>REPEATBLE READ</td><td>없음</td><td>없음</td><td>발생</td></tr><tr><td>SERIALIZABLE</td><td>없음</td><td>없음</td><td>없음</td></tr></tbody></table>
+<table>
+    <thead>
+        <tr>
+            <th></th>
+            <th>DIRTY READ</th>
+            <th>NON-REPEATABLE READ</th>
+            <th>PHANTOM READ</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr><td>READ UNCOMMITTED</td><td>발생</td><td>발생</td><td>발생</td></tr>
+        <tr><td>READ COMMITTED</td><td>없음</td><td>발생</td><td>발생</td></tr>
+        <tr><td>REPEATBLE READ</td><td>없음</td><td>없음</td><td>발생</td></tr>
+        <tr><td>SERIALIZABLE</td><td>없음</td><td>없음</td><td>없음</td></tr>
+    </tbody>
+</table>
 
+InnoDB에서는 독특한 특성 때문에 REPEATABLE READ 격리 수준에서도 PHANTOM READ가 발생하지 않는다.<br>
+오라클에서는 주로 READ COMMITTED 수준을 MySQL에서는 REPEATBLE READ를 주로 사용한다<br>
+
+### 5.4.1 READ UNCOMMITTED
+* 트랜잭션에서의 변경 내용이 COMMIT이나 ROLLBACK 여부에 상관없이 다른 트랜잭션에서 보인다.
+* `더티 리드`가 허용되는 격리 수준이다.
+    * 더티 리드(Dirty read): 어떤 트랜잭션에서 처리한 작업이 완료되지 않았는데 다른 트랜잭션에서 볼 수 있는 현상
+* 정합성에 문제가 많은 격리 수준으로 MySQL을 사용한다면 최소한 READ COMMITTED 이상의 격리 수준을 사용할 것을 권한한다.
+
+<img src="그림 5.3.png">
+
+### 5.4.2 READ COMMITED
+* 오라클 DBMS에서 기본으로 사용되는 격리 수준이다.
+* 온라인 서비스에서 가장 많이 선택되는 격리 수준이다.
+* 더티 리드(Dirty read) 같은 현상은 발생하지 않는다.
+* 어떤 트랜잭션에서 데이터를 변경해도 COMMIT이 완료된 데이터만 다른 트랜잭션에서 조회할 수 있다.
+
+<img src="그림 5.4.png">
+
+READ COMMITTED 격리 수준에서도 `NON-REPEATABLE READ(REPEATABLE READ가 불가능)`라는 부정합의 문제가 있다.
+
+<img src="그림 5.5.png">
+
+처음 조회한 SELECT는 일치하는 결과가 없었고, 사용자 A가 변경하고 커밋을 실행한 후 똑같은 쿼리로 SELECT로 조회하면 결과가 1건이 조회된다.<br>
+하나의 트랜잭션 내에서 똑같은 SELECT 쿼리를 실행했을 때는 항상 같은 결과를 가져와야 한다는 `REAPEATABLE READ` 정합성에 어긋나는 것이다.<br>
+부정합 현상은 일반적인 웹 프로그램에선 큰 문제가 되지 않을 수 있지만 트랜잭션에서 동일 데이터를 여러 번 읽고 변경하는 작업이 금전적인 처리와 연결되면 문제가 될 수 있다.<br>
+* 다른 트랜잭션에서 입금과 출금 처리가 계속 진행될 때 다른 트랜잭션에서 오늘 입금된 총합을 조회한다고 가정하는 경우
+
+중요한 것은 `사용 중인 트랜잭션 격리 수준에 의해 실행하는 SQL 문장이 어떤 결과를 가져오게 되는지를 정확히 예측할 수 있어야 하는 것`이다.<br>
+이를 위해선 각 트랜잭션 격리 수준이 어떻게 작동하는지 알아야 한다.<br>
+
+
+### 5.4.3 REPEATABLE READ
+* MySQL의 InnoDB 스토리지 엔진에서 기본으로 사용되는 격리 수준이다.
+* 바이너리 로그를 가진 MySQL 서버에서는 최소 REPEATABLE READ 격리 수준 이상을 사용해야 한다.
+* `NON-REPEATABLE READ` 부정합이 발생하지 않는다.
+* InnoDB 스토리지 엔진은 트랜잭션이 롤백될 가능성에 대비해 변경 전 레코드를 언두 공간에 백업해두고 실제 레코드 값을 변경한다.
+    * 이러한 변경 방식을 `MVCC(Multi Version Concurrency Control)`라고 한다.
+* REPEATABLE READ는 이 MVCC를 위해 언두 영역에 백업된 이전 데이터를 이용해 동일 트랜잭션 내에서는 동일한 결과를 보여줄 수 있게 보장한다.
+* 모든 InnoDB의 트랜잭션은 고유한 트랜잭션 번호(순차적으로 증가하는 값)를 가지며언두 영역에 백
+업된 모든 레코드에는 변경을 발생시킨 트랜잭션의 번호가 포함돼 있다.
+    * 불필요하다고 판단하는 시점에 주기적으로 삭제한다.
+
+<img src="그림 5.6.png">
+
+REPEATABLE READ 격리 수준에서도 부정합이 발생할 수 있다.
+
+<img src="그림 5.7.png">
+
+다른 트랜잭션에서 수행한 변경 작업에 의해 레코드가 보였다 안 보였다 하는 현상을 PHANTOM READ`(또는 PHANTOM ROW)`라고 한다.<br>
+SELECT … FOR UPDATE 쿼리는 SELECT하는 레코드에 쓰기 잠금을 걸어야 하는데, 언두 레코드에는 잠금을 걸 수 없다. 그래서 SELECT … FOR UPDATE 쿼리는 SELECT … LOCK IN SHARE MODE로 조회되는 레코드는 언두 영역의 변경 전 데이터를 가져오는 것이 아니라 현재 레코드의 값을 가져오게 되는 것이다.
+
+### 5.4.4 SERIALIZABLE
+* 가장 단순한 격리 수준이면서 동시에 가장 엄격한 격리 수준이다.
+* 동시 처리 성능이 다른 트랜잭션 격리 수준보다 떨어진다.
+* InnoDB 테이블에서 가장 순수한 SELECT 작업은 아무런 레코드 잠금도 설정하지 않고 실행한다.
+    * INSERT ... SELECT, CREATE TABLE ... AS SELECT 은 해당 X
+* InnoDB 메뉴얼에서 자주 나타나는 `Non-locking consistent read(잠금이 필요 없는 일관된 읽기)`라는 말을 의미한다.
+* 격리 수준이 SERIALIZABLE이 되면 읽기 작업도 공유 잠금(읽기 잠금)을 획득해야 한다.
+* 한 트랜잭션에서 읽고 쓰는 레코드를 다른 트랜잭션에서는 절대 접근할 수 없다.
+* 일반적인 DBMS에서 일어나는 `PHANTOM READ`라는 문제가 발생하지 않는다.
+    * InnoDB 스토리지 엔진에서는 갭 락과 넥스트 키 락 덕분에 REPEATABLE READ 격리 수준에서도 `PHANTOM READ`가 발생하지 않기 때문에 SERIALIZABLE이 격리 수준을 사용할 필요성이 없다.
