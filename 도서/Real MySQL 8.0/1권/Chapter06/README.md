@@ -53,7 +53,41 @@ mysql> OPTIMIZE TABLE t1;
     * `KEY_BLOCK_SIZE` 옵션을 명시할 때 2n(n 값은 2이상)으로 설정할 수 있다.
     * 페이지 크기가 16KB라면 KEY_BLOCK_SIZE는 4KB, 8KB만 가능하며, 페이지 크기가 32KB, 64KB면 테이블 압축을 적용할 수 없다.
 ```
-mysql> SET GLOBAL innodb_file_per_table=ON;
+mysql > SET GLOBAL innodb_file_per_table=ON;
 
+-- // ROW_FORMAT 옵션과 KEY_BLOCK_SIZE 옵션을 모두 명시
+mysql > CREATE TABLE compressed_table (
+    c1 INT PRIMARY KEY
+)
+ROW_FORMAT=COMPRESSED
+KEY_BLOCK_SIZE=8;
 
+-- // ROW_FORMAT 옵션만 명시
+-- // ROW_FORMAT 옵션이 생략되면, 자동으로 ROW_FORMAT=COMPRESSED 옵션이 추가
+mysql > CREATE TABLE compressed_table (
+    c1 INT PRIMARY KEY
+)
+KEY_BLOCK_SIZE=8;
 ```
+* ROW_FORMAT 옵션이 생략되면, 자동으로 ROW_FORMAT=COMPRESSED 옵션이 추가
+* KEY_BLOCK_SIZE에 명시된 옵션 값은 KB 단위를 설정
+
+#### InnoDB 스토리지 엔진이 압축을 적용하는 방법 (목표를 8KB 가정)
+```
+1. 16KB의 데이터 페이지를 압축
+    1.1 압축된 결과가 8KB 이하이면 그대로 디스크에 저장(압축 완료)
+    1.2 압축된 결과가 8KB를 초과하면 원본 페이지를 스플릿해서 2개의 페이지에 8KB씩 저장
+2. 나뉜 페이지 각각에 대해 "1"번 단계를 반복 실행
+```
+* InnoDB I/O 레이어는 아무런 역할을 하지 않는다는 것을 알 수 있다.
+  
+<img src="그림 6.2.png">
+
+* 테이블 압축 방식에서 가장 중요한 것은 원본 데이터 페이지 압축 결과가 목표 크기(KEY_BLOCK_SIZE)보다 작거나 같을 때까지 반복해서 페이지를 스플릿 하는 것이다.
+  * 목표 크기가 잘못 설정되면 MySQL 서버의 처리 성능이 급격히 떨어질 수 있다.
+
+### 6.2.2 KEY_BLOCK_SIZE 결정
+* 테이블 압축에서 가장 중요한 부분은 압축된 결과가 어느 정도가 될지를 예측해서 `KEY_BLOCK_SIZE`를 걸졍하는 것이다.
+  * 테이블 압축을 적용 전에 KEY_BLOCK_SIZE를 4KB, 8KB로 테이블을 생성 후 샘플 데이터를 보고 적절한지 판단하는 것이 좋다.
+  * 샘플 데이터는 많을수록 정확한 테스트가 가능하고, 최소한 테이블 데이터 페이지가 10개정도 생성되도록 테스트 데이터를 생성하는 것이 좋다.
+* 압축 실패율은 3~5% 미만으로 유지할 수 있게 KEY_BLOCK_SIZE를 선택하는 것이 좋다.
