@@ -274,5 +274,42 @@ ORDER BY의 3가지 처리 방법 가운데 `인덱스를 사용한 정렬 방�
 * 옵티마이저가 루스 인덱스 스캔을 사용할 때는 실행 계획의 Extra 칼럼에 "Using index for group-by" 코멘트가 표시된다.
 * 루스 인덱스 스캔 방식은 단일 테이블에 대해 수행되는 GROUP BY 처리에만 사용할 수 있다. 프리픽스 인덱스는 이 방식을 사용할 수 없다.
 * 루스 인덱스 스캔은 인덱스의 유니크한 값의 수가 적을수록 성능이 향상된다.(분포도가 좋지 않은 인덱스일수록 성능이 향상된다)
+```
+-- 루스 인덱스 스캔을 사용할 수 없는 쿼리 패턴
+
+-- // MIN()과 MAX() 이외의 집합 함수가 사용됐기 때문에 루스 인덱스 스캔은 사용 불가
+SELECT coll, SUM(col2) FROM tb_test GROUP BY col1;
+
+-- // GROUP BY에 사용된 칼럼이 인덱스 구성 칼럼의 왼쪽부터 일치하지 않기 때문에 사용 불가 
+SELECT col1, col2 FROM tb_test GROUP BY col2, col3;
+
+-- // SELECT 절의 칼럼이 GROUP BY와 일치하지 않기 때문에 사용 불가 
+SELECT col1, col3 FROM tb_test GROUP BY col1, col2;
+```
 
 #### 9.2.4.3 임시 테이블을 사용하는 GROUP BY
+* 인덱스를 전혀 사용하지 못할 때는 임시 테이블을 사용하는 GROUP BY 방식으로 처리된다.
+* 8.0 버전부터는 ORDER BY 절이 없을 때, 묵시적 정렬이 실행되지 않는다.
+
+### 9.2.5 DISTINCT 처리
+* 유니크 값만 조회하려고 DISTINCT를 처리하는데 집합 함수와 함께 사용되는 경우와 집합 함수가 없는 경우에 따라서 DISTINCT가 미치는 범위가 달라진다.
+* DISTINCT가 사용되는 쿼리에서 인덱스를 사용하지 못 할 때는 항상 임시 테이블이 필요하다.
+
+#### 9.2.5.1 SELECT DISTINCT ...
+* 단순히 유니크한 레코드만 가져오고자 한다면 GROUP BY와 동일한 방식으로 처리된다.
+* DISTINCT는 SELECT하는 레코드를 유니크하게 SELECT하는 것이지, 특정 칼럼만 유니크하게 조회하는 것이 아니다.
+```
+-- // first_name, last_name 조합 전체가 유니크한 레코드를 가져온다.
+mysql> SELECT DISTINCT first_name, last_name FROM employees;
+
+-- // DISTINCT는 함수가 아니기 때문에 괄호에는 의미가 없다.
+mysql> SELECT DISTINCT(first_name), last_name FROM employees;
+```
+
+#### 9.2.5.2 집합 함수와 함께 사용된 DISTINCT
+* COUNT(), MIN(), MAX() 같은 집합 함수 내에서 DISTINCT 키워드가 사용될 수 있는데, 이 경우에는 SELECT DISTINCT …와 다른 형태로 해석된다.
+* 집합 함수 내에서 사용된 DISTINCT는 그 집합 함수의 인자로 전달된 칼럼값이 유니크한 것들을 가져온다.
+* 인덱스된 칼럼에 대해서 DISTINCT 처리를 수행하면 인덱스 풀 스캔, 인덱스 레인지 스캔하면서 임시 테이블 없이 최적화된 처리를 수행하지만 인덱스를 사용하지 않는다면 임시 테이블을 생성해 임시 테이블의 컬럼에 유니크 인덱스를 생성하기 때문에 레코드가 많다면 느려진다.
+
+### 9.2.6 내부 임시 테이블 활용
+* MySQL 엔진이 스토리지 엔진으로부터 받아온 레코드를 정렬하거나 그루핑할 때는 내부적인 임시 테이블을 사용한다.
