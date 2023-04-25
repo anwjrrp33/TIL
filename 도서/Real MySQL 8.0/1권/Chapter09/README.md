@@ -325,3 +325,130 @@ mysql> SELECT DISTINCT(first_name), last_name FROM employees;
 * MMAP 파일로 전환하는 것이 InnoDB 테이블로 전환하는 것보다 오버헤드가 적기 때문에 MMAP 파일로 전환하는 것이 기본값이다.
 
 #### 9.2.6.2 임시 테이블이 필요한 쿼리
+* 인덱스를 사용하지 못할 때는 내부 임시 테이블을 생성해야 할 때가 있다.
+  * ORDER BY와 GROUP BY에 명시된 칼럼이 다른 쿼리
+  * ORDER BY나 GROUP BY에 명시된 칼럼이 조인의 순서상 첫 번째 테이블이 아닌 쿼리
+  * DISTINCT나 ORDER BY가 동시에 쿼리에 존재하는 경우 또는 DISTINCT가 인덱스로 처리되지 못하는 쿼리
+  * UNION이나 UNION DISTINCT가 사용된 쿼리
+  * 쿼리의 실행 계획에서 select_type이 DERIVED인 쿼리
+* 일반적으로 유니크 인덱스가 있는 내부 임시 테이블은 그렇지 않은 쿼리보다 처리 성능이 상당히 느리다.
+
+#### 9.2.6.3 임시 테이블이 디스크에 생성되는 경우
+* 내부 임시 테이블은 기본적으로 메모리상에 만들어지지만 특정 조건에는 메모리 임시 테이블을 사용할 수 없는데 이 경우 디스크 기반의 임시 테이블을 사용한다.
+  * UNION이나 UNION ALL에서 SELECT되는 칼럼 중에서 길이가 512바이트 이상인 크기의 칼럼이 있는 경우
+  * GROUP BY나 DISTINCT 칼럼에서 512바이트 이상인 크기의 칼럼이 있는 경우
+  * 메모리 임시 테이블의 크기가 tmp_table_size 또는 max_heap_table_size 시스템 변수보다 크거나 temptable_max_ram 시스템 변수 값보다 큰 경우
+
+#### 9.2.6.4 임시 테이블 관련 상태 변수
+* 실행 계획에서 "Using temporary"가 표시되면 임시 테이블의 사용했다는 사실을 알수 있지만 메모리 임시테이블인지 디스크 임시 테이블인지 임시 테이블이 하나만 사용됬는지 알 수 없다.
+* 임시 테이블이 생성 정보를 알기 위해서 MySQL 서버의 상태 변수(`SHOW SESSION STATUS LIKE ‘Created_tmp%’;`)를 확인하면 된다.
+  * `Created_tmp_tables`: 만들어진 내부 임시 테이블의 개수를 누적하는 상태 값
+  * `Created_tmp_disk_tables`: 디스크에 내부 임시 테이블이 만들어진 개수만 누적해서 가지고 있는 상태 값
+
+## 9.3 고급 최적화
+* 실행 계획을 수립할 때 통계 정보와 옵티마이저 옵션을 결합해서 최적의 실행 계획을 수립하게 된다.
+* 옵티마이저 옵션은 크게 2가지로 구분한다.
+  * 조인 관련된 옵티마이저 옵션
+  * 옵티마이저 스위치
+
+### 9.3.1 옵티마이저 스위치 옵션
+* 옵티마이저 스위치 옵션은 `optimizer_switch` 시스템 변수를 이용해서 제어하고, 여러 개의 옵션을 세트로 묶어서 설정한다.
+
+##### 옵티마이저 스위치 최적화 옵션
+<table>
+    <tr>
+        <th>옵티마이저 스위치 이름</th>
+        <th>기본값</th>
+        <th>설명</th>
+    </tr>
+    <tr>
+        <td>batched_key_access</td>
+        <td>off</td>
+        <td>BKA 조인 알고리즘을 사용할지 여부 설정</td>
+    </tr>
+    <tr>
+        <td>block_nested_loop</td>
+        <td>on</td>
+        <td>Block Nested Loop 조인 알고리즘을 사용할지 여부 설정</td>
+    </tr>
+    <tr>
+        <td>engine_condition_pushdown</td>
+        <td>on</td>
+        <td>Engine Condition Pushdown 기능을 사용할지 여부 설정</td>
+    </tr>
+    <tr>
+        <td>index_condition_pushdown</td>
+        <td>on</td>
+        <td>Index Condition Pushdown 기능을 사용할지 여부 설정</td>
+    </tr>
+    <tr>
+        <td>use_index_extensions</td>
+        <td>on</td>
+        <td>Index Extension 최적화를 사용할지 여부 설정</td>
+    </tr>
+    <tr>
+        <td>index_merge</td>
+        <td>on</td>
+        <td>Merge 최적화를 사용할지 여부 설정</td>
+    </tr>
+    <tr>
+        <td>index_merge_intersection</td>
+        <td>on</td>
+        <td>Merge Intersection 최적화를 사용할지 여부 설정</td>
+    </tr>
+    <tr>
+        <td>index_merge_sort_union</td>
+        <td>on</td>
+        <td>Merge Sort Union 최적화를 사용할지 여부 설정</td>
+    </tr>
+    <tr>
+        <td>index_merge_union</td>
+        <td>on</td>
+        <td>Index Merge Union 최적화를 사용할지 여부 설정</td>
+    </tr>
+    <tr>
+        <td>mrr</td>
+        <td>on</td>
+        <td>MRR 최적화를 사용할지 여부 설정</td>
+    </tr>
+    <tr>
+        <td>mrr_cost_based</td>
+        <td>on</td>
+        <td>비용기반의 MRR 최적화를 사용할지 여부 설정</td>
+    </tr>
+    <tr>
+        <td>semijoin</td>
+        <td>on</td>
+        <td>세미 조인 최적화를 사용할지 여부 설정</td>
+    </tr>
+    <tr>
+        <td>firstmatch</td>
+        <td>on</td>
+        <td>FirstMatch 세미 조인 최적화를 사용할지 여부 설정</td>
+    </tr>
+    <tr>
+        <td>loosescan</td>
+        <td>on</td>
+        <td>LooseScan 세미 조인 최적화를 사용할지 여부 설정</td>
+    </tr>
+    <tr>
+        <td>materialization</td>
+        <td>on</td>
+        <td>Materialization 최적화를 사용할지 여부 설정</td>
+    </tr>
+    <tr>
+        <td>subquery_materialization_cost_based</td>
+        <td>on</td>
+        <td>비용 기반의 Materialization 최적화를 사용할지 여부 설정</td>
+    </tr>
+</table>
+
+#### 9.3.1.1 MRR과 배치 키 액세스(mrr & batched_key_access)
+* MRR(Multi-Range Read) 또는 DS-MRR(Disk Sweep Multi-Range Read)라고도 한다.
+* 기존에는 네스티드 루프 조인 방식을 사용하고, 네스티드 루프 조인 방식에서는 조인 처리를 MySQL 엔진이 담당하고, 실제 레코드를 검색하고 읽는 부분은 스토리지 엔진이 담당하는데 이 방식에선 스토리지 엔진에서 최적화를 수행할 수 없다.
+  * `네스티드 루프 조인 방식`: 드라이빙 테이블의 레코드를 한 건 읽어서 드리븐 테이블의 일치하는 레코드를 찾아서 조인을 수행하는 방식
+* MySQL 서버에서는 네스티드 루프 조인 방식을 사용할 때 스토리지 엔진에서 최적화를 수행할 수 없다는 단점을 보완하기 위해서 조인 버퍼에 조인 대상을 버퍼링한다. (드라이빙 테이블과 드리븐 테이블을 바로 조인하지 않고 조인 대상을 버퍼링하는 것이다)
+* 조인 버퍼에 레코드가 가득 차면 MySQL 엔진은 버퍼링된 레코드를 스토리지 엔진으로 한 번에 요청해서 디스크 읽기를 최소화할 수 있는데 이런 방식을 MRR이라고 한다.
+* MRR을 응용해서 실행되는 조인 방식을 BKA(Batched Key Access) 조인이라고 하는데 부가적인 정렬 작업이 필요해서 성능이 저하되기도 한다.
+
+#### 9.3.1.2 블록 네스티드 루프 조인
