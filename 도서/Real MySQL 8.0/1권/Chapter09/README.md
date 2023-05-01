@@ -576,3 +576,29 @@ mysql〉 SELECT *
 * condition_fanout_filter 최적화 기능을 활성화하면 옵티마이저는 더 정교한 계산을 하므로 더 많은 시간, 컴퓨팅 자원이 소모되서 쿼리가 간단한 경우에는 큰 도움이 되지 않을 수도 있다.
 
 #### 9.3.1.16 파생 테이블 머지(derived_merge)
+* 예전 버전의 MySQL 서버에서는 FROM 절에 사용된 서브쿼리는 먼저 실행해서 그 결과를 임시 테이블로 만든 다음 외부 쿼리 부분을 처리한다.
+* MySQL 서버에서는 `FROM 절에 사용된 서브쿼리를 파생 테이블`이라고 부른다.
+* 임시 테이블에 레코드가 많아진다면 임시 테이블로 레코드를 복사하고 읽는 오버헤드로 인해 쿼리 성능이 저하된다.
+* MySQL 5.7 버전부터는 파생 테이블로 만들어지는 서브쿼리를 외부 쿼리와 병합해서 서브쿼리 부분을 제거하는 최적화가 도입됬고, `derived_merge` 최적화 옵션을 통해서 이러한 임시 테이블을 최적화를 활설화할지 결정한다.
+* 아래와 같은 조건에는 옵티마이저가 자동으로 서브쿼리를 외부 쿼리로 병합할 수 없다.
+  * SUM() 또는 MIN(), MAX() 같은 집계 함수와 윈도우 함수(Window Function)가 사용된 서브쿼리
+    * `윈도우 함수`: Group By와 비슷하게 데이터를 그룹화하여 집계해주는 함수로 Group by 없이 SUM(), MIN(), MAX()를 썼을 떄를 의미한다.
+    ```
+    mysql> SELECT SUM(profit) OVER (PARTITION BY country) FROM table
+    ```
+  * DISTINCT가 사용된 서브쿼리
+  * GROUP BY나 HAVING이 사용된 서브쿼리
+  * LIMIT가 사용된 서브쿼리
+  * UNION 또는 UNION ALL을 포함하는 서브쿼리
+  * SELECT 절에 사용된 서브쿼리
+  * 값이 변경되는 사용자 변수가 사용된 서브쿼리
+
+#### 9.3.1.17 인비저블 인덱스(use_invisible_indexes)
+* 인덱스를 삭제하지 않고, 해당 인덱스를 사용하지 못하게 제어하는 기능이다.
+```
+-- // 옵티마이저가 인덱스를 사용/미사용하도록 변경
+mysql> ALTER TABLE [테이블 이름] ALTER INDEX [인덱스 이름] [VISIBLE/INVISIBLE];
+```
+* `use_invisible_indexes` 옵션을 on으로 설정하면 INVISIBLE 상태의 인덱스도 옵티마이저가 볼 수 있다.
+
+#### 9.3.1.18 스킵 스캔(skip_scan)
