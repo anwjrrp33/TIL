@@ -761,3 +761,138 @@ mysql> SELECT /*! STRAIGHT_JOIN */
 * 모든 시스템 변수를 SET_VAR 힌트로 조정할 수 없다.
 
 #### 9.4.2.4 SEMIJOIN & NO_SEMIJOIN
+* SEMIJOIN 힌트는 `어떤 세부 전략을 사용할지를 제어하는 데 사용`할 수 있다.
+
+<table>
+    <tr>
+        <th>최전화 전략</th>
+        <th>힌트</th>
+    </tr>
+    <tr>
+        <td>Duplicate Weed-out</td>
+        <td>
+            SEMIJOIN(DUPSWEEDOUT)
+        </td>
+    </tr>
+    <tr>
+        <td>First Match</td>
+        <td>
+            SEMIJOIN(FIRSTMATCH)
+        </td>
+    </tr>
+    <tr>
+        <td>Loose Scan</td>
+        <td>
+            SEMIJOIN(LOOSESCAN)
+        </td>
+    </tr>
+    <tr>
+        <td>Materialization</td>
+        <td>
+            SEMIJOIN(MATERIALIZATION)
+        </td>
+    </tr>
+    <tr>
+        <td>Table Pull-out</td>
+        <td>
+            없음
+        </td>
+    </tr>
+</table>
+
+* NO_SEMIJOIN 힌트는 `특정 세미 조인 최적화 전략을 사용하지 않게` 하는데 최적화 전략들은 `상황에 따라 다른 최적화 전략으로 우외하는 것이 더 나은 성능`을 낼 수도 있기 떄문이다.
+
+#### 9.4.2.5 SUBQUERY
+* 서브쿼리 최적화는 세미 조인 최적화가 사용되지 못할 때 사하는 최적화 방법이다.
+
+<table>
+    <tr>
+        <th>최전화 전략</th>
+        <th>힌트</th>
+    </tr>
+    <tr>
+        <td>IN-to-EXISTS</td>
+        <td>
+            SUBQUERY(INTOEXISTS)
+        </td>
+    </tr>
+    <tr>
+        <td>Materialization</td>
+        <td>
+            SUBQUERY(MATERIALIZATION)
+        </td>
+    </tr>
+</table>
+
+* 세미 조인 최적화는 IN 형태에는 사용될 수 있지만 안티 세미 조인의 최적화에는 서브쿼리 최적화가 사용된다.
+* 서브쿼리 최적화 전략을 사용할 기회가 그다지 많지 않다.
+
+#### 9.4.2.6 BNL & NO_BNL & HASHJOIN & NO_HASHJOIN
+* MySQL 8.0.20 버전부터는 블록 네스티드 루프 조인까지 해시 조인 알고리즘이 대체했고, 더 이상 블록 네스티드 루프 조인이 사용되지 않는다.
+* BNL과 NO_BNL 힌트는 MySQL 8.0.20 버전 이후에도 사용 가능하지만 HASHJOIN과 NO_HASHJOIN 힌트는 MySQL 8.0.18 버전에서만 유효하다.
+
+#### 9.4.2.7 JOIN_FIXED_ORDER & JOIN_ORDER & JOIN_PREFIX & JOIN_SUFFIX
+* 조인의 순서를 결정하기 위한 STRAIGHT_JOIN를 사용했는데 FROM 절에 사용된 테이블의 순서를 조인 순서에 맞게 변경해야 한다는 단점과 일부만 조인 순서를 강제하는 것이 불가능했던 단점을 보완하기 위해서 나온 힌트는 아래와 같다.
+  * `JOIN_FIXED_ORDER`: STRAIGHT_JOIN과 동일하게 FROM 절의 테이블 순서대로 조인을 실행하는 힌트
+  * `JOIN_ORDER`: FROM 절에 사용된 테이블의 순서가 아니라 힌트에 명시된 테이블의 순서대로 조인을 실행하는 힌트
+  * `JOIN_PREFIX`: 조인에서 드라이빙 테이블만 강제하는 힌트
+  * `JOIN_SUFFIX`: 조인에서 드리븐 테이블만 강제하는 힌트
+
+#### 9.4.2.8 MERGE & NO_MERGE
+* 예전 버전의 MySQL 서버는 FROM 절에 사용된 서브쿼리를 항상 내부 임시 테이블(파생 테이블)로 생성했다.
+* 내부 임시 테이블은 불필요한 자원 소모를 유발해서 MySQL 5.7과 8.0 버전에서는 가능하면 `임시 테이블을 사용하지 않게 FROM 절의 서브쿼리를 외부 쿼리와 병합`하는 최적화를 도입했다.
+* 때로는 내부 임시 테이블을 생성한느 것이 나은 선택이 될 수도 있고, `옵티아미저가 최적의 방법을 선택하지 못할 때, MERGE 또는 NO_MERGE 힌트를 사용`한다.
+
+#### 9.4.2.9 INDEX_MERGE & NO_INDEX_MERGE
+* MySQL 서버는 가능하다면 테이블당 하나의 인덱스만을 이용해 쿼리를 처리하려 하지만 하나의 인덱스만으로 검색 대상을 충분히 좁힐 수 없다면 다른 인덱스를 이용한다.
+* 하나의 테이블에 대해 여러 개의 인덱스를 동시에 사용하는 것을 인덱스 머지라고 하는데 인덱스 머지는 성능 향상에 도움이 되지만 항상 그렇지는 않다.
+* 인덱스 머지 실행 계획의 사용 여부를 제어할 때 INDEX_MERGE 와  NO_INDEX_MERGE 힌트를 사용한다.
+
+#### 9.4.2.10 NO_ICP
+* 인덱스 컨디션 푸시다운(ICP, Index Condition Pushdown) 최적화는 `사용 가능하다면 항상 성능 향상에 도움`이 되므로 최대한 사용하는 방향으로 실행 계획을 수립한다.
+* 인덱스 푸시 다운으로 인해 여러 실행 계획의 비용이 잘못된다면 결과적으로 잘못된 실행 계획을 수립하게 될 수도 있다.
+* 인덱스 컨디션 푸시다운으로 측정된 비용이 더 낮게 측정되서 해당 인덱스를 사용하겠지만 간혹 실제 서비스에선 오히려 비용이 더 높게 측정된 인덱스가 더 효율적일 수도 있다.
+* 테이블의 데이터 분포는 항상 균등한 것이 아니기 때문에 쿼리 검색 범위에 따라 달라지며 이 같은 경우엔 인덱스 컨디션 푸시다운을 비활성화 해서 유연하고 정확하게 실행 계획을 선택할 수 있다.
+
+#### 9.4.2.12 INDEX & NO_INDEX
+* INDEX 와 NO_INDEX 옵티마이저 힌트는 에전 MySQL 서버에서 사용되던 인덱스 힌트를 대체하는 용도로 제공된다.
+
+<table>
+    <tr>
+        <th>인덱스 힌트</th>
+        <th>옵티마이저 힌트</th>
+    </tr>
+    <tr>
+        <td>USE INDEX</td>
+        <td>INDEX</td>
+    </tr>
+    <tr>
+        <td>USE INDEX FOR GROUP BY</td>
+        <td>GROUP_INDEX</td>
+    </tr>
+    <tr>
+        <td>USE INDEX FOR ORDER BY</td>
+        <td>ORDER_INDEX</td>
+    </tr>
+    <tr>
+        <td>IGNORE INDEX</td>
+        <td>NO_INDEX</td>
+    </tr>
+    <tr>
+        <td>IGNORE INDEX FOR GROUP BY</td>
+        <td>NO_GROUP_INDEX</td>
+    </tr>
+    <tr>
+        <td>IGNORE INDEX FOR ORDER BY</td>
+        <td>NO_ORDER_INDEX</td>
+    </tr>
+</table>
+
+* 인덱스 힌트는 특정 테이블 뒤에 사용했기 때문에 별도로 힌트 내에 테이블 명 없이 인덱스 이름만 나열했지만 옵티마이저 힌트는 테이블명과 인덱스 이름을 함께 명시해야 한다.
+```
+-- // 옵티마이저 힌트 사용
+mysql> EXPLAIN
+      SELECT /*+ INDEX(employees ix_firstname) */ * 
+      FROM employees
+      WHERE first_name='Matt';
+```
