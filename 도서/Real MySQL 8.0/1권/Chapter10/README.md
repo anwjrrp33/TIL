@@ -88,3 +88,26 @@ mysql> EXPLAIN FORMAT=JSON
 * 쿼리의 실행 계획이 아주 나쁜 경우라면 EXPLAIN 명령으로 먼저 실행 계획만 확인해서 어느 정도 튜닝한 후 EXPLAIN ANALYZE 명령을 실행하는 것이 좋다.
 
 ## 10.3 실행 계획 분석
+MySQL 8.0 버전부터는 EXPLAIN 명령의 실행 계획의 포맷을 테이블, JSON, TREE 형태로 선택할 수 있지만 출력 포맷보다는 `실행 계획이 어떤 접근 방법을 통해서 최적화를 수행하는지, 어떤 인덱스를 사용하는지 등의 이해가 중요`하다.
+
+실행 순서는 위에서 아래로 순서도래 표시되고(UNION, 상관 서브쿼리는 다를 수 있다) 위쪽에 출력된 결과일수록(id 컬럼이 작을수록) 쿼리의 바깥 부분이거나 먼저 접근한 테이블이고, 아래쪽에 출력된 결과일수록 쿼리의 안쪽 부분 또는 나중에 접근한 테이블에 해당한다.
+
+### 10.3.1 id 칼럼
+* 실행계획의 id 칼럼은 `단위 SELECT 쿼리 별로 부여되는 식별자 값`이며, 하나의 SELECT 문장 안에서 여러 개의 테이블을 조인하면 조인되는 테이블의 개수만큼 레코드가 출력되지만 같은 id가 부여된다.
+```
+mysql > EXPLAIN
+        SELECT
+          (SELECT COUNT(*) FROM act_expence_application) AS CNT
+        FROM (
+          SELECT * FROM
+            act_expence_application
+        ) tb1 LEFT OUTER JOIN
+        act_expence_application_list tb2
+        ON
+          tb1.ExpenceApplicationID = tb2.ExpenceApplicationID;
+----------------------------------------------------------------
+1	PRIMARY	act_expence_application
+1	PRIMARY	tb2
+2	SUBQUERY	act_expence_application
+```
+* 주의할 점은 id 칼럼이 테이블의 접근 순서를 의미하지지는 않으며 `EXPLAIN format=tree 명령`을 통해서 TREE 구조로 확인하는 것이 순서를 정확히 확인할 수 있다.
