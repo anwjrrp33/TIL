@@ -111,3 +111,33 @@ mysql > EXPLAIN
 2	SUBQUERY	act_expence_application
 ```
 * 주의할 점은 id 칼럼이 테이블의 접근 순서를 의미하지지는 않으며 `EXPLAIN format=tree 명령`을 통해서 TREE 구조로 확인하는 것이 순서를 정확히 확인할 수 있다.
+
+### 10.3.2 select_type 칼럼
+* 각 단위 SELECT 쿼리가 어떤 타입의 쿼리인지 표시되는 칼럼이다.
+
+#### 10.3.2.1 SIMPLE
+* UNION이나 서브쿼리를 사용하지 않는 단순한 SELECT 쿼리인 경우 해당 쿼리 문장의 select_type은 SIMPLE로 표시된다. (조인도 포함)
+* 아무리 복잡한 쿼리라도 SIMPLE인 단위 쿼리는 하나만 존재한다. 일반적으로 제일 바깥 SELECT 쿼리가 SIMPLE이다.
+
+#### 10.3.2.2 PRIMARY
+* UNION이나 서브쿼리를 가지는 SELECT 쿼리의 가장 바깥쪽에 있는 단위 쿼리로 PRIMARY로 표시된다.
+* 쿼리에서 PRIMARY인 단위 쿼리는 하나만 존재한다.
+
+#### 10.3.2.3 UNION
+* UNION으로 결합하는 단위 SELECT 쿼리 가운데 첫 번째를 제외한 두 번째 이후 단위 SELECT 쿼리로 UNION으로 표시된다.
+* UNION의 첫 번째 단위 SELECT는 select_type이 임시 테이블(DERIVED)이다.
+
+#### 10.3.2.4 DEPENDENT UNION
+* UNION select_type과 같이 UNION이나 UNION ALL로 집합을 결합하는 쿼리에서 표시된다.
+* DEPENDENT는 UNION이나 UNION ALL로 결합된 단위 쿼리가 외부 쿼리에 의해 영향을 받는 것을 의미한다.
+```
+mysql> EXPLAIN 
+      SELECT *
+      FROM employees e1 WHERE e1.emp_no IN (
+        SELECT e2.emp_no FROM employees e2 WHERE e2.first_name='Matt' 
+        UNION
+        SELECT e3.emp_no FROM employees e3 WHERE e3.last_name='Matt'
+);
+```
+
+#### 10.3.2.5 UNION RESULT
