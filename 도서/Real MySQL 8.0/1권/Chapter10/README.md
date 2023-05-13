@@ -137,7 +137,33 @@ mysql> EXPLAIN
         SELECT e2.emp_no FROM employees e2 WHERE e2.first_name='Matt' 
         UNION
         SELECT e3.emp_no FROM employees e3 WHERE e3.last_name='Matt'
-);
+      );
 ```
 
 #### 10.3.2.5 UNION RESULT
+* UNION(또는 UNION DISTINCT) 결과를 담아두는 테이블을 의미한다.
+* 8.0 버전부터는 UNION ALL은 임시 테이블을 사용하지 않도록 기능을 개선했지만 UNION(또는 UNION DISTINCT)은 임시 테이블에 결과를 버퍼링한다.
+* UNION RESULT는 실제 쿼리에서 단위 쿼리가 아니기 때문에 별도의 id 값은 부여되지 않는다.
+* UNION ALL을 사용하면 임시 테이블을 버퍼링하지 않기 때문에 실행 계획에 라인이 표시되지 않는다.
+
+#### 10.3.2.6 SUBQUERY
+* 서브쿼리라고 하면 여러 가지를 통틀어서 이야기 하는데, select_type의 SUBQUERY는 `FROM 절 이외에서 사용되는 서브쿼리만을 의미`한다.
+* FROM절에 사용된 서브쿼리는 DERIVED로 표시되고, 그 밖의 위치에서 사용된 서브쿼리는 전부 SUBQUERY로 표시된다.
+* 서브쿼리는 사용하는 위치에 따라 다른 이름을 지닌다.
+  * 중첩된 쿼리(Nested Query): SELECT되는 칼럼에 사용된 서브쿼리
+  * 서브쿼리(Subquery): WHERE 절에 사용된 서브쿼리
+  * 파생 테이블(Derived Table): FROM 절에 사용된 서브쿼리, 인라인 뷰 또는 서브 셀렉트라고도 부른다.
+* 서브쿼리는 반환하는 값의 특성에 따라 구분된다.
+  * 스칼라 서브쿼리(Scalar Subquery): 하나의 값만(칼럼이 단 하나인 레코드 1건) 반환하는 쿼리
+  * 로우 서브쿼리(Row Subquery): 칼럼의 개수와 관계없이 하나의 레코드만 반환하는 쿼리
+
+#### 10.3.2.7 DEPENDENT SUBQUERY
+* 서브쿼리가 바깥쪽(Outer) SELECT 쿼리에서 정의된 컬럼을 사용하는 경우를 의미한다.
+* 외부 쿼리가 먼저 수행된 후 내부 쿼리가 샐행돼야 하므로 일반 서브쿼리보다 느리다.
+
+#### 10.3.2.8 DERIVED
+* FROM 절에 사용된 서브쿼리를 의미한다.
+* 5.6 버전부터는 FROM 절의 서브쿼리를 외부 쿼리와 통합하는 형태의 최적화가 수행되기도 하고, 8.0 버전부터는 최적화가 많이 개선되어 불필요한 서브쿼리는 조인으로 재작성된다.
+* 쿼리를 튜닝하기 위해 실행 계획을 확인할 때 가장먼저 select_type 칼럼의 값이 DERIVED인 것이 있는지 확인해야 한다.
+
+#### 10.3.2.9 DEPENDENT DERIVED
