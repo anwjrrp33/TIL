@@ -1,6 +1,10 @@
-package 도서.오브젝트.Chapter02.movie.step01;
+package 도서.오브젝트.Chapter02.movie.step02;
 
 import java.time.Duration;
+
+import 도서.오브젝트.Chapter02.movie.step01.DiscountPolicy;
+import 도서.오브젝트.Chapter02.movie.step01.Money;
+import 도서.오브젝트.Chapter02.movie.step01.Screening;
 
 public class Movie {
     private String title; // 제목
@@ -21,5 +25,9 @@ public class Movie {
 
     public Money calculateMovieFee(Screening screening) { // 할인요금을 반환하는 메서드
         return fee.minus(discountPolicy.calculateDiscountAmount(screening));
+    }
+
+    public void changeDiscountPolicy(DiscountPolicy discountPolicy) { // 할인 정책을 변경하는 메서드
+        this.discountPolicy = discountPolicy;
     }
 }

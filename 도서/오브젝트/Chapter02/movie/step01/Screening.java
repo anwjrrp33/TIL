@@ -3,10 +3,6 @@ package 도서.오브젝트.Chapter02.movie.step01;
 import java.time.LocalDateTime;
 
 public class Screening {
-    private Movie movie; // 영화
-    private int sequence; // 
-    private LocalDateTime whenScreened; // 
-
     private Movie movie; // 상영할 영화
     private int sequence; // 순번
     private LocalDateTime whenScreened; // 상영 시작 시간
