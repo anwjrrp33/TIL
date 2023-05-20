@@ -61,11 +61,11 @@ logging:
 
 save의 경우 @Transactional 프록시가 정상적으로 동작 하지만 saveAll의 경우 this.save을 호출해서 target을 바라보게되서 `내부 호출은 프록시를 거치지 않기 때문에` saveAll에서 호출되는 save는 saveAll이 종료되는 시점에 commit을 하게됩니다.
 
-<img src="https://github.com/anwjrrp33/TIL/blob/main/JPA/saveLog.png?raw=true">
+<img src="https://github.com/anwjrrp33/TIL/blob/main/JPA/save%20%EC%99%80%20saveAll%EC%9D%98%20%EC%B0%A8%EC%9D%B4/saveLog.png?raw=true">
 
 즉 save는 호출때마다 매번 데이터베이스와 커넥션을 맺어서 insert를 하지만 saveAll의 경우 벌크연산을 통해서 단 한번의 커넥션만 맺어서 insert를 호출하게 됩니다.
 
-<img src="https://github.com/anwjrrp33/TIL/blob/main/JPA/saveAllLog.png?raw=true">
+<img src="https://github.com/anwjrrp33/TIL/blob/main/JPA/save%20%EC%99%80%20saveAll%EC%9D%98%20%EC%B0%A8%EC%9D%B4/saveAllLog.png?raw=true">
 
 ## 결론
 * 1건의 데이터를 insert할 때는 save를 다건의 데이터를 insert할 때는 saveAll을 사용하는게 좋습니다.
