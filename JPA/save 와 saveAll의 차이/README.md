@@ -11,6 +11,23 @@ save와 saveAll은 SimpleJpaRepository에 구현된 메서드로 코드는 아�
 ```
 @Transactional
 @Override
+public <S extends T> S save(S entity) {
+
+    Assert.notNull(entity, "Entity must not be null");
+
+    if (entityInformation.isNew(entity)) {
+        em.persist(entity);
+        return entity;
+    } else {
+        return em.merge(entity);
+    }
+}
+```
+
+* saveAll 메서드
+```
+@Transactional
+@Override
 public <S extends T> List<S> saveAll(Iterable<S> entities) {
 
     Assert.notNull(entities, "Entities must not be null");
@@ -22,23 +39,6 @@ public <S extends T> List<S> saveAll(Iterable<S> entities) {
     }
 
     return result;
-}
-```
-
-* saveAll 메서드
-```
-@Transactional
-@Override
-public <S extends T> S save(S entity) {
-
-    Assert.notNull(entity, "Entity must not be null");
-
-    if (entityInformation.isNew(entity)) {
-        em.persist(entity);
-        return entity;
-    } else {
-        return em.merge(entity);
-    }
 }
 ```
 
