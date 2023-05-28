@@ -31,6 +31,20 @@
   * 다른 객체가 요청할 수 있는 오퍼레이션을 위해 필요한 상태를 보관한다. ➔ 객체의 행동에 초점을 맞춘다.
   * 객체를 협력하는 공동체의 일원으로 바라본다.
 
-훌륭한
-
 ### 데이터를 준비하자
+데이터 중심의 설계란 객체 내부에 저장되는 데이터를 기반으로 시스템을 분할하는 방식이다. ➔ 객체가 내부에 저장해야 하는 `데이터가 무엇인가`를 묻는 것으로 시작한다.
+
+Movie에 저장될 데이터를 결정하는 것으로 시작한다.
+```
+public class Movie {
+    private String title; // 제목
+    private Duration runningTime; // 상영시간
+    private Money fee; // 기본 요금
+    private List<DiscountCondition> discountConditions; // 할인 조건의 목록
+
+    private MovieType movieType; // 열거형으로 이루어진 할인 정책의 종류를 결정하는 영화 종류
+    private Money discountAmount; // 할인 금액
+    private double discountPercent; // 할인 비율
+}
+```
+
