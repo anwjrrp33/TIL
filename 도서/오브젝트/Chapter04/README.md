@@ -34,7 +34,7 @@
 ### 데이터를 준비하자
 데이터 중심의 설계란 객체 내부에 저장되는 데이터를 기반으로 시스템을 분할하는 방식이다. ➔ 객체가 내부에 저장해야 하는 `데이터가 무엇인가`를 묻는 것으로 시작한다.
 
-Movie에 저장될 데이터를 결정하는 것으로 시작한다.
+영화(Movie)에 저장될 데이터를 결정하는 것으로 시작한다.
 ```
 public class Movie {
     private String title; // 제목
@@ -47,4 +47,51 @@ public class Movie {
     private double discountPercent; // 할인 비율
 }
 ```
+```
+public enum MovieType { 
+    AMOUNT_DISCOUNT,  // 금액 할인 정책
+    PERCENT_DISCOUNT, // 비율 할인 정책
+    NONE_DISCOUNT     // 미적용
+}
+```
 
+#### 기존과의 차이점
+* 할인 조건의 목록(discountConditions)이 인스턴스 변수로 Movie 안에 직접 포함돼 있다.
+* DiscountPolicy라는 별도의 클래스로 분리했던 이전 예제와 달리, 금액 할인 정책에 사용되는 할인금액(discountAmount), 할인비율(discountPercent)을 Movie안에서 직접 정의하고 있다.
+* 영화별로 단 하나의 할인정책(DiscountPolicy)를 지정해야 하기 때문에 추가적인 MovieType(열거형)이 필요하다.
+
+데이터 중심의 설계에서는 객체가 포함해야 하는 데이터에 집중한다. ➔ 이 객체가 포함해야 하는 데이터는 무엇인가? 객체의 책임을 결정하기 전에 이런 질문의 반복에 휩쓸려 있다면, 데이터 중심의 설계를 하고있을 확률이 높다.
+
+Movie클래스의 경우처럼 객체의 종류를 저장하는 인스턴스 변수(movieType)와 인스턴스의 종류에 따라 배타적으로 사용될 인스턴스 변수(discountAmount, discountPercent)를 하나의 클래스 안에 함께 포함시키는 방식은 데이터 중심의 설계 안에서 흔히 볼 수 있는 패턴이다.
+
+필요한 데이터를 준비했다면 객체지향의 가장 중요한 원칙은 캡슐화를 위해서 가장 간단한 방법은 내부의 데이터를 반환하는 접근자(accessor)와 데이터를 변경하는 수정자(mutator)를 추가하는 것이다.
+
+데이터 중심의 설계에서 할인 조건을 위해 해야하는 질문은 다음과 같다.
+할인 조건을 구현하는데 필요한 데이터는 무엇인가? 현재 할인 조건의 종류를 저장할 데이터가 필요할것 이다.
+이를 DiscountConditionType으로 만들어 보자.
+```
+public enum DiscountConditionType {
+    SEQUENCE, // 순번 조건
+    PERIOD    // 기간 조건
+}
+```
+
+할인 조건을 구현하는 DIscountCondition은 할인 조건의 타입을 저장할 인스턴스 변수인 type을 포함하고추가적으로 movie와 마찬가지로 데이터를 가지고 있는다. 또한 캡슐화의 원칙에 따라 속성들을 클래스 외부로 노출해서는 안되기 때문에 getter/setter를 추가한다.
+```
+public class DiscountCondition { 
+    private DiscountConditionType type; // 할인 조건의 타입
+
+    private int sequence; // 순번
+
+    private DayOfWeek dayOfWeek; // 요일
+    private LocalTime startTime; // 시작 시간
+    private LocalTime endTime; // 종료 시간
+
+    ... getter/setter 메서드
+}
+```
+
+영화를 예매하기 위해서 구현된 클래스는 아래와 같다.
+<img src="./image/그림%204.1.png">
+
+### 영화를 예매하자
