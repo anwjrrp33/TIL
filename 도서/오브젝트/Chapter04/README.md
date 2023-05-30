@@ -92,6 +92,101 @@ public class DiscountCondition {
 ```
 
 영화를 예매하기 위해서 구현된 클래스는 아래와 같다.
+* [예매(Reservation)](./movie/step01/Reservation.java)
+* [고객(Customer)](./movie/step01/Customer.java)
+* [상영(Screening)](./movie/step01/Screening.java)
+* [영화(Movie)](./movie/step01/Movie.java)
+* [할인 조건(DiscountCondition)](./movie/step01/DiscountCondition.java)
 <img src="./image/그림%204.1.png">
 
 ### 영화를 예매하자
+ReservationAgency는 데이터 클래스들을 조합헤서 영화 예매 절차를 구현하는 클래스이다.
+* Discountcondition에 대해 루프를 돌면서 할인 가능 여부를 확인한다.
+* discountable 변수의 값을 체크하고 적절한 할인 정책에 따라 예매 요금을 계산한다.
+```
+public class ReservationAgency {
+    public Reservation reserve(Screening screening, Customer customer,
+                               int audienceCount) {
+        Movie movie = screening.getMovie();
+
+        boolean discountable = false;
+        for(DiscountCondition condition : movie.getDiscountConditions()) {
+            if (condition.getType() == DiscountConditionType.PERIOD) {
+                discountable = screening.getWhenScreened().getDayOfWeek().equals(condition.getDayOfWeek()) &&
+                        condition.getStartTime().compareTo(screening.getWhenScreened().toLocalTime()) <= 0 &&
+                        condition.getEndTime().compareTo(screening.getWhenScreened().toLocalTime()) >= 0;
+            } else {
+                discountable = condition.getSequence() == screening.getSequence();
+            }
+
+            if (discountable) {
+                break;
+            }
+        }
+
+        Money fee;
+        if (discountable) {
+            Money discountAmount = Money.ZERO;
+            switch(movie.getMovieType()) {
+                case AMOUNT_DISCOUNT:
+                    discountAmount = movie.getDiscountAmount();
+                    break;
+                case PERCENT_DISCOUNT:
+                    discountAmount = movie.getFee().times(movie.getDiscountPercent());
+                    break;
+                case NONE_DISCOUNT:
+                    discountAmount = Money.ZERO;
+                    break;
+            }
+
+            fee = movie.getFee().minus(discountAmount).times(audienceCount);
+        } else {
+            fee = movie.getFee().times(audienceCount);
+        }
+
+        return new Reservation(customer, screening, fee, audienceCount);
+    }
+}
+```
+
+지금까진 데이터 중심으로 영화 예매 시스템을 설계하는 방법을 살펴봤고, 책임 중심의 설계 방법과 비교하면서 두 방법의 장단점을 살펴본다.
+
+## 02. 설계 트레이드오프
+캡슐화, 응징도, 결합도를 사용해서 장단점을 비교하고 캡슐화, 응집도, 결합도 라는 3가지 품질 척도의 의미를 알아본다.
+
+### 캡슐화
+* 객체지향에서는 변경 가능성이 높은 부분은 내부에 숨기고, 외부에는 상대적으로 안정적인 부분을 공개함으로써 변경의 여파를 통제할 수 있다. ➔ 이처럼 변경 가능성이 높은 부분을 객체 내부로 숨기는 추상화 기법이 캡슐화이다.
+* 변경 가능성이 높은 부분을 구현, 상대적으로 안정적인 부분을 인터페이스라고 부른다. ➔ 이는 변경의 정도에 따라 구현과 인터페이스를 분리하고 외부에서는 인터페이스에만 의존하도록 관계를 조절하는 것이다.
+* 객체지향에서 복잡성을 취급하는 주요한 추상화 방법은 캡슐화이다. 이는 객체지향 언어를 사용한다고 해서 애플리케이션이 자동적으로 잘 캡슐화 되지 않는다. 설계 과정동안 지속적으로 캡슐화를 목표로 인식할때만 달성될 수 있다. ➔ 즉 객체지향을 하기위해서 캡슐화를 하는 것이 아닌 캡슐화를 하면 자연스럽게 객체지향적인 설계와 구현이 되는 것이다.
+* 요구사항이 변경되기 때문이고, 캡슐화가 중요한 이유는 불안정한 부분과 안정 적인 부분을 분리해서 변경의 영향을 통제할 수 있기 때문이다. ➔ 변경이 일어났을 때 영향을 최소한 줄일 수 있다.
+
+결국 캡슐화란? 변경 가능성이 높은 부분을 객체 내부로 숨기는 추상화 기법이다. 
+
+### 응집도와 결합도
+#### 응집도
+* 응집도는 모듈에 포함된 내부 요소들이 연관돼 있는 정도를 나타낸다.
+* 모듈 내의 요소들이 하나의 목적을 달성하기 위해 협력한다면 그 모듈은 높은 응집도를 갖는다고 할 수 있다.
+* 객체지향의 관점에서 응집도는 객체 또는 클래스에 얼마나 관련 높은 책임을 할당했는지를 나타낸다.
+
+#### 결합도
+* 결합도는 의존성의 정도를 나타내며, 다른 모듈에 대해 얼마나 많은 지식을 갖고 있는지를 나타내는 척도다.
+* 어떤 모듈이 다른 모듈에 대해 너무 자세한 내용까지 알고 있다면, 두 모듈은 높은 결합도를 갖는다.
+* 객체지향의 관점에서 결합도는 객체 또는 클래스가 협력에 필요한 적절한 수준의 관계만을 유지하고 있는지를 나타낸다.
+
+#### 높은 응집도와 낮은 결합도를 추구하는 이유
+높은 응집도와 낮은 결합도를 가진 설계를 추구해야 하는 이유는 `설계를 변경하기 쉽게 만들기 때문`이다. 
+
+변경의 관점에서 응집도란 변경이 발생할 때 모듈 내부에서 발생하는 변경의 정도로 측정할 수 있다. ➔ 하나의 변경을 수용하기 위해 모듈 전체가 함께 변경된다면 높은 응집도를 갖는다.
+
+결합도 역시 변경의 관점에서 보면, 한 모듈이 변경되기 위해서 다른 모듈의 변경을 요구하는 정도로 측정할 수 있다. ➔ 하나의 모듈을 수정할 때 얼마나 많은 모듈을 함께 수정해야 하는지를 나타낸다.
+
+#### 변경과 응집도 사이의 관계
+응집도가 높은 설계에서는 하나의 요구사항 변경을 반영하기 위해 오직 하나의 모듈만 수정하면 되고, 응집도가 낮은 설계에서는 하나의 원인에 의해 변경해야 하는 부분이 다수의 모듈에 분산돼 있기 때문에 여러 모듈을 동시에 수정해야 한다.
+
+응집도가 높을수록? ➔ 변경의 대상과 범위가 명확해지기 때문에 코드를 변경하기 쉬워진다.
+<img src="./image/그림%204.2.png">
+
+#### 변경과 결합도 사이의 관계
+낮은 결합도를 가진 왼쪽의 설계에서는 모듈 A를 변경했을 때 오직 하나의 모듈만 영향을 받는다는 것을 알 수 있고, 높은 결합도를 가지면 변경했을 때 모든 모듈을 동시에 변경해야 한다.
+
+<img src="./image/그림%204.3.png">
