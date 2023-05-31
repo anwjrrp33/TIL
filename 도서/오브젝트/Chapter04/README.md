@@ -190,3 +190,266 @@ public class ReservationAgency {
 낮은 결합도를 가진 왼쪽의 설계에서는 모듈 A를 변경했을 때 오직 하나의 모듈만 영향을 받는다는 것을 알 수 있고, 높은 결합도를 가지면 변경했을 때 모든 모듈을 동시에 변경해야 한다.
 
 <img src="./image/그림%204.3.png">
+
+## 03. 데이터 중심의 영화 예매 시스템의 문제점
+데이터 중심의 설계가 가진 대표적인 문제점은 다음과 같다.
+* 캡슐화 위반
+* 높은 결합도
+* 낮은 응집도
+
+### 캡슐화 위반
+데이터를 중심으로 설계한 영화(Movie) 클래스를 보면 오직 메서드를 통해서만 객체 내부의 상태에 접근할 수 있다. 예를 들어, fee의 값을 읽거나 수정하기 위해서는 getter/setter 메서드를 사용해야 한다.
+```
+public class Movie {
+    private Money fee;
+
+    public Money getFee() {
+        return fee;
+    }
+
+    public void setFee(Money fee) {
+        this.fee = fee;
+    }
+}
+```
+위 코드 처럼 getter/setter를 사용하면 캡슐화의 원칙을 지키는 것 처럼 보인다.
+
+하지만 getter, setter 는 객체 내부의 상태에 대한 어떤 정보도 캡슐화하지 못한다. getFee()와 setFee() 메서드는 영화(Movie) 클래스 내부에 Money 타입의 fee라는 이름의 인스턴스 변수가 존재한다는 사실을 퍼블릭 인터페이스에 노골적으로 드러낸다.
+
+Movie가 캡슐화의 원칙을 어기게 되는 근본적인 원인은 객체가 수행할 책임이 아니라 내부에 저장할 데이터에 초점을 맞췄기 때문이다.
+
+설계를 할때 협력에 관해 고민하지 않으면 캡슐화를 위반하는 과도한 접근자와 수정자를 가지게 되는 경향이 있다.
+
+이처럼 `접근자와 수정자에 과도하게 의존하는 설계 방식을 추측에 의한 설계 전략`이라고 부른다. ➔ 이 전략은 객체가 사용될 협력을 생각하지 않고, 다양한 상황에서 사용될 수 있을 것이라는 막연한 추측을 기반으로 한다.
+
+결과적으로 내부 구현이 퍼블릭 인터페이스에 노출되고, 캡슐화의 원칙을 위반하는 변경에 취약한 설계가 된다.
+
+### 높은 결합도
+내부 구현이 객체의 인터페이스에 드러난다는 것은? ➔ 강하게 결합된다는 것을 의미하고, 내부 구현이 변경되면 해당 인터페이스를 의존하는 모든 클라이언트가 함께 변경해야 한다.
+
+```
+public class ReservationAgency {
+    public Reservation reserve(Screening screening, Customer customer, int audienceCount) {
+        ...
+        Money fee;
+        if (discountable) {
+            ...
+            fee = movie.getFee().minus(discountedAmount).times(audienceCount); // getter를 이용한 퍼블릭 인터페이스
+        } else {
+            fee = movie.getFee(); // getter를 이용한 퍼블릭 인터페이스
+        }
+    }
+}
+```
+영화(Movie) 클래스에서 Money 타입을 가져오는 getFee()의 타입이 변경되면? ➔ getFee() 메서드의 반환 타입도 함께 수정해야 하기 때문에 데이터 중심 설계는 객체의 캡슐화를 약화시키기 때문에 클라이언트가 객체의 구현에 강하게 결합된다.
+
+#### 데이터 중심 설계의 단점
+결합도 측면에서 데이터 중심의 설계가 가지는 단점은 여러 객체들을 사용하는 제어 로직이 특정 객체 안에 집중되기 때문이다. ➔ 하나의 제어 객체가 다수의 데이터 객체에 강하게 결합하고, 어떤 데이터 객체를 변경해도 제어 객체를 함께 변경해야 하는 문제가 발생한다.
+
+#### 데이터 중심 영화 시스템의 단점
+* 데이터 중심의 영화 시스템을 보면 대부분의 제어 로직을 가지고 있는 예매(ReservationAgency)가 모든 데이터 객체에 의존한다는 것을 알 수 있다.
+* 만약 할인 조건(DiscountCondition), 상영(Screening) 중 어떤 것을 수정해도 예매(ReservationAgency)도 함께 수정해야 한다.
+* 예매(ReservationAgency)는 모든 의존성이 모이는 결합의 집결지이다.
+
+<img src="./image/그림%204.4.png">
+
+### 낮은 응집도
+서로 다른 이유로 변경되는 코드가 하나의 모듈 안에 공존할 때 모듈의 응집도가 낮다고 말한다.
+
+#### 변경과 응집도 사이의 관계
+다음과 같은 수정사항이 발생하면 예매(ReservationAgency)의 코드를 수정해야 한다.
+* 할인 정책별로 할인 요금을 계산하는 방법이 변경될 경우
+* 할인 정책이 추가될 경우
+* 할인 조건이 추가되는 경우
+* 할인 조건별로 할인 여부를 판단하는 방법이 변결될 경우
+* 예매 요금을 계산하는 방법이 변경될 경우
+
+낮은 응집도는 두 가지 측면에서 설계에 문제를 일으킨다.
+1. 변경의 원인이 다른 코드들의 하나의 모듈 안에 뭉쳐있어 변경과 아무 상관 없는 코드들까지 영향을 받는다.
+   * 할인 정책을 추가하는 코드가 할인 조건을 판단하는 코드에 영향을 미칠 수 있다.
+2. 하나의 요구사항 변경을 위해 여러 모듈을 동시에 수정해야 한다.
+   * MoneyType 열거형(Enum) 값 추가
+   * ReservationAgency Switch에 case 추가
+   * Movie에 새로운 할인 정책 위해 필요한 데이터 추가
+
+현재의 설계는 새로운 할인 정책이나 할인 조건을 추가하기 위해 하나 이상의 클래스를 동시에 수정해야 한다. ➔ 어떤 요구사항 변경을 수용하기 위해 하나 이상의 클래스가 흔들리면 설계의 응집도가 낮다는 증거이다.
+
+#### 단일 책임 원칙(Single Responsibility Principle, SRP)
+* 로버트 마틴은 모듈의 응집도가 변경과 연관이 있다는 사실을 강조하기 위해서 단일 책임 원칙이라는 설계 원칙을 제시했다.
+* 단일 책임 원칙이란 클래스는 단 한 가지의 변경 이유만 가져야 한다는
+것이다. ➔ 한 클래스의 하나의 책임만 가지는 것을 의미하며 목적과 취지에 맞는 속성과 메소드로 구성해야 합니다.
+* 단일 책임 원칙을 올바르게 지키면 클래스의 응집도를 높일 수 있다.
+
+## 04. 자율적인 객체를 향해
+### 캡슐화를 지켜라
+객체에게 의미 있는 메서드는 객체가 책임져야 하는 무언가를 수행하는 메서드다. 속성의 가시성을 private으로 설정했다고 해도 접근자와 수정자를 통해 속성을 외부로 제공하고 있다면 캡슐화를 위반하는 것이다.
+
+아래와 같은 코드를 예시로 어떤 문제가 있는지 살펴본다.
+```
+public Rectangle {
+    private int left;
+    private int top;
+    private int right;
+    private int bottom;
+
+    public int getLeft() { return left; }
+    public void setLeft(int left) { this.left = left; }
+
+    public int getTop() { return top; }
+    public void setTop(int top) { this.top = top; }
+
+    public int getRight() { return right; }
+    public void setRight(int right) { this.right = right; }
+
+    public int getBottom() { return bottom; }
+    public void setBottom(int bottom) { this.bottom = bottom; }
+
+}
+```
+
+해당 코드를 사용하기 위해서 외부의 코드는 아래와 같이 구현돼 있을 것이다.
+```
+class AnyClass {
+    void anyMethod(Rectangle rectangle, int multiple) {
+        rectangle.setRight(rectangle.getRight() * multiple);
+        rectangle.setBottom(rectangle.getBottom() * multiple);
+        ...
+    }
+}
+```
+
+#### 코드의 문제점
+1. 코드 중복이 발생할 확률이 높다.
+   * 너비와 높이를 증가시키는 코드가 필요하다면 아마 getRight, getBottom 메서드를 호출하고 setRight, setBottom 메서드를 수정하는 유사한 로직이 존재하고, 코드 중복을 초래할 수 있다.
+2. 변경에 취약하다.
+   * right와 bottom대신 length와 height를 이용해서 사각형을 표현하거나 type을 변경한다고 하면 해당 메서드를 사용하는 클라이언트들은 모두 수정 해주어야 한다.
+
+#### 해결 방법
+해결 방법은 결국 캡슐화를 강화시켜서 내부에서 너비와 높이를 조절하는 로직을 캡슐화하는 것이다.
+```
+class Rectangle {
+    public void enlarge(int multiple) {
+        right *= multiple;
+        bottom *= multiple;
+    }
+}
+```
+
+### 스스로 자신의 데이터를 책임지는 객체
+* 우리가 상태와 행동을 객체라는 하나의 단위로 묶는 이유는 객체 스스로 자신의 상태를 처리할 수 있게 하기 위해서이다.
+* 객체 내부의 데이터보다 객체가 협력하며 수행할 책임을 정의하는 오퍼레이션이 더 중요하다.
+* 아래 두 질문을 조합하면 새로운 데이터 타입을 만들 수 있다.
+  * 이 객체가 어떤 데이터를 포함해야 하는가
+  * 이 객체가 데이터에 대해 수행해야 하는 오퍼레이션은 무엇인가
+
+#### 예매(ReservationAgency)로 새어나간 데이터에 대한 책임 개선하기
+1. 할인 조건 타입 계산하기
+```
+public class DiscountCondition {
+    private DiscountConditionType type;
+
+    private int sequence;
+
+    private DayOfWeek dayOfWeek;
+    private LocalTime startTime;
+    private LocalTime endTime;
+
+    ... 생성자 생략
+
+    public DiscountConditionType getType() {
+        return type;
+    }
+
+    public boolean isDiscountable(DayOfWeek dayOfWeek, LocalTime time) {
+        if (type != DiscountConditionType.PERIOD) {
+            throw new IllegalArgumentException();
+        }
+
+        return this.dayOfWeek.equals(dayOfWeek) &&
+                this.startTime.compareTo(time) <= 0 &&
+                this.endTime.compareTo(time) >= 0;
+    }
+
+    public boolean isDiscountable(int sequence) {
+        if (type != DiscountConditionType.SEQUENCE) {
+            throw new IllegalArgumentException();
+        }
+
+        return this.sequence == sequence;
+    }
+}
+```
+
+2. 영화 요금 계산하기와 할인 여부 판단하기
+```
+public class Movie {
+    private String title;
+    private Duration runningTime;
+    private Money fee;
+    private List<DiscountCondition> discountConditions;
+
+    private MovieType movieType;
+    private Money discountAmount;
+    private double discountPercent;
+
+    ... 생성자 생략
+
+    public MovieType getMovieType() {
+        return movieType;
+    }
+
+    public Money calculateAmountDiscountedFee() {
+        if (movieType != MovieType.AMOUNT_DISCOUNT) {
+            throw new IllegalArgumentException();
+        }
+
+        return fee.minus(discountAmount);
+    }
+
+    public Money calculatePercentDiscountedFee() {
+        if (movieType != MovieType.PERCENT_DISCOUNT) {
+            throw new IllegalArgumentException();
+        }
+
+        return fee.minus(fee.times(discountPercent));
+    }
+
+    public Money calculateNoneDiscountedFee() {
+        if (movieType != MovieType.NONE_DISCOUNT) {
+            throw new IllegalArgumentException();
+        }
+
+        return fee;
+    }
+
+    public boolean isDiscountable(LocalDateTime whenScreened, int sequence) { // 할인 여부를 판단하는 메서드
+        for(DiscountCondition condition : discountConditions) {
+            if (condition.getType() == DiscountConditionType.PERIOD) {
+                if (condition.isDiscountable(whenScreened.getDayOfWeek(), whenScreened.toLocalTime())) {
+                    return true;
+                }
+            } else {
+                if (condition.isDiscountable(sequence)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+}
+```
+
+3. 
+
+#### 개선 전 설계와 개선 후 설계
+<img src="./image/그림%204.4.png"><img src="./image/그림%204.5.png">
+
+## 05. 하지만 여전히 부족하다
+
+### 캡슐화 위반
+
+#### 캡슐화의 진정한 의미
+캡슐화란 변할 수 있는 어떤 것이라도 감추는 것이다. 그것이 속성의 타입이건, 할인 정책의 종류건 상관 없이 `내부 구현의 변경으로 인해 외부의 객체가 영향을 받는다면 캡슐화를 위반한 것`이다. 설계에서 변하는 것이 무엇인지 고려하고 변하는 개념을 캡슐화해야 한다.
+
+### 높은 결합도
