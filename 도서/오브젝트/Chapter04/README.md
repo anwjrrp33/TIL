@@ -440,16 +440,166 @@ public class Movie {
 }
 ```
 
-3. 
+3. 상영을 통해서 예매 요금을 계산한 후 계산된 요금으로 예매한다.
+```
+public class ReservationAgency {
+    public Reservation reserve(Screening screening, Customer customer, int audienceCount) {
+        Money fee = screening.calculateFee(audienceCount);
+        return new Reservation(customer, screening, fee, audienceCount);
+    }
+}
+```
 
 #### 개선 전 설계와 개선 후 설계
+첫 번쨰 설계보다 두 번째 설계가 내부 구현을 더 면밀하게 캡슐화하고 있고, 객체들이 스스로를 책임지고 있다.
 <img src="./image/그림%204.4.png"><img src="./image/그림%204.5.png">
 
 ## 05. 하지만 여전히 부족하다
+첫 번쨰 설계보다 두 번째 설계가 더 개선됐지만 데이터 중심의 설계 방식에 속하기 때문에 캡슐화 위반이 여전히 발생한다.
 
 ### 캡슐화 위반
+할인 조건(DiscountCondition)은 스스로 관리하는 자율적인 객체인것 처럼 보이지만 할인 조건(DiscountCondition)에 구현된 isDiscountable 메서드를 살펴보면 이상한점이 있다.
+* isDiscountable(DayOfWeek, LocalTime)은 내부 인스턴스 변수의 타입을 인터페이스로 외부에 노출하고, 객체 내부에 DayOfWeek, LocalTime 정보가 인스턴스 변수로 포함돼 있음을 노출시킨다.
+* setType 메서드는 없지만, getType 메서드를 통해 내부에 DiscountConditionType 인스턴스 변수가 있음을 노출한다.
+```
+public class DiscountCondition {
+    ... 생략
+    public DiscountConditionType getType() {
+        return type;
+    }
+
+    public boolean isDiscountable(DayOfWeek dayOfWeek, LocalTime time) {
+        if (type != DiscountConditionType.PERIOD) {
+            throw new IllegalArgumentException();
+        }
+
+        return this.dayOfWeek.equals(dayOfWeek) &&
+                this.startTime.compareTo(time) <= 0 &&
+                this.endTime.compareTo(time) >= 0;
+    }
+    ... 생략
+}
+```
+
+영화(Movie)또한 캡슐화가 부족하다.
+* 메서드의 시그니처가 아닌, 메서드의 이름을 통해 3가지 할인 정책이 존재한다는 사실을 노출한다.
+  * 메서드 시그니처: 메서드의 정의에서 메서드 이름과 매개변수 리스트의 조합을 말한다. 오버로딩은 메서드 시그니처를 통해서 구별한다.
+* calculateAmountDiscountedFee, calculatePercentDIscountedFee, calculateNoneDiscountedFee 3개의 메서드는 할인 정책에 금액할인, 비율할인, 미적용 총 3가지가 존재한다는 사실을 노출한다.
+```
+ublic class Movie {
+    ... 생략
+    public Money calculateAmountDiscountedFee() {
+        if (movieType != MovieType.AMOUNT_DISCOUNT) {
+            throw new IllegalArgumentException();
+        }
+
+        return fee.minus(discountAmount);
+    }
+
+    public Money calculatePercentDiscountedFee() {
+        if (movieType != MovieType.PERCENT_DISCOUNT) {
+            throw new IllegalArgumentException();
+        }
+
+        return fee.minus(fee.times(discountPercent));
+    }
+
+    public Money calculateNoneDiscountedFee() {
+        if (movieType != MovieType.NONE_DISCOUNT) {
+            throw new IllegalArgumentException();
+        }
+
+        return fee;
+    }
+    ... 생략
+}
+```
+
+만약 새로운 할인 정책이 추가되거나 제거된다면? ➔ 이 메서드를 의존하는 모든 클라이언트가 영향을 받는다.
 
 #### 캡슐화의 진정한 의미
 캡슐화란 변할 수 있는 어떤 것이라도 감추는 것이다. 그것이 속성의 타입이건, 할인 정책의 종류건 상관 없이 `내부 구현의 변경으로 인해 외부의 객체가 영향을 받는다면 캡슐화를 위반한 것`이다. 설계에서 변하는 것이 무엇인지 고려하고 변하는 개념을 캡슐화해야 한다.
 
 ### 높은 결합도
+캡슐화 위반을 한 할인 조건(DiscountCondition)의 내부 구현이 외부로 노출되었기 때문에 영화(Movie)와의 결합도가 높다. ➔ 결합도가 높기 때문에 변경의 영향이 전파될 확률이 높다.
+
+#### 결합도 사이에 미치는 영향
+* DiscountCondition의 기간 할인 조건의 명칭이 PERIOD에서 다른 값으로 변경되면 Movie를 수정해야 한다.
+* DiscountCondition의 종류가 추가되거나 삭제된다면 Movie안의 if - else 구문을 수정해야 한다.
+* condition.isDiscountable 메소드의 인자가 변경될 경우, Movie의 isDiscountable 인자도 변경되어야 하고 결과적으로 Screening까지 변경을 초래하게 된다.
+```
+public class Movie {
+    public boolean isDiscountable(LocalDateTime whenScreened, int sequence) {
+        for(DiscountCondition condition : discountConditions) {
+            if (condition.getType() == DiscountConditionType.PERIOD) {
+                if (condition.isDiscountable(whenScreened.getDayOfWeek(), whenScreened.toLocalTime())) {
+                    return true;
+                }
+            } else {
+                if (condition.isDiscountable(sequence)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+}
+
+```
+
+결국 모든 문제의 원인은 캡슐화 원칙을 지키지 않았기 때문이다. ➔ 유연한 설계를 창조하기 위해서는 캡슐화를 설계의 첫 번째 목표로 삼아야 한다.
+
+### 낮은 응집도
+상영(Screnning)을 살펴보면, 할인 조건의 종류를 변경하기 위해서는 할인 조건(DiscountCondition), 영화(Movie), 상영(Screening)을 함께 수정해야 한다. ➔ 이는 응집도가 낮다는 의미이고, 결국 캡슐화를 위반했다는 소리이다.
+```
+public class Screening {
+    ... 생략
+    public Money calculateFee(int audienceCount) {
+        switch (movie.getMovieType()) {
+            case AMOUNT_DISCOUNT:
+                if (movie.isDiscountable(whenScreened, sequence)) {
+                    return movie.calculateAmountDiscountedFee().times(audienceCount);
+                }
+                break;
+            case PERCENT_DISCOUNT:
+                if (movie.isDiscountable(whenScreened, sequence)) {
+                    return movie.calculatePercentDiscountedFee().times(audienceCount);
+                }
+            case NONE_DISCOUNT:
+                movie.calculateNoneDiscountedFee().times(audienceCount);
+        }
+
+        return movie.calculateNoneDiscountedFee().times(audienceCount);
+    }
+}
+```
+
+Movie의 내부 구현이 인터 페이스에 그대로 노출되고 있고 Screening은 노출된 구현에 직접적으로 의존하고 있다. ➔ 결국 데이터 중심 설계의 문제점을 그대로 가지고 있다.
+
+## 06. 데이터 중심 설계의 문제점
+데이터 중심의 설계가 변경에 취약한 이유는 두 가지다.
+1. 본질적으로 너무 이른 시기에 데이터에 관해 결정하도록 강요한다.
+2. 협력이라는 문맥을 고려하지 않고 객체를 고립시킨 채 오퍼레이션을 결정한다.
+
+### 데이터 중심 설계는 행동보다 상태에 초점을 맞춘다
+"이 객체가 포함하는 데이터가 무엇인가?" 는 데이터 중심 설계의 첫 질문이였다. 하지만 데이터는 구현의 일부이고, 이 때문에 너무 이른 시기에 내부 구현에 초점을 맞추게 된다.
+
+데이터 중심의 관점에서 객체는 그저 단순한 데이터의 집합체(구조체)일 뿐이다. 이로 인해 getter, setter가 과도하게 추가되고, 데이터 객체를 사용하는 절차를 분리된 별도의 객체 안에 구현하게 된다. ➔ 이는 public 속성과 큰 차이가 없기 때문에 결국 캡슐화가 무너진다.
+
+데이터를 먼저 결정하고 데이터를 처리하는데 필요한 오프레이션을 나중에 결정하므로 데이터에 관한 지식이 객체의 인터페이스에 고스란히 드러난다. ➔ 캡슐화에 실패하고 코드는 변경에 취약해진다.
+
+결론적으로 데이터 중심의 설계는 너무 이른 시기에 데이터에 대해 고민하기 때문에 캡슐화에 실패하게 된다. ➔ 객체의 내부 구현이 객체의 인터페이스를 어지럽히고 객체의 응집도와 결합도에 나쁜 영향을 미치기 때문에 변경에 취약한 코드를 낳게 된다.
+
+### 데이터 중심 설계는 객체를 고립시킨 채 오퍼레이션을 정의하도록 만든다.
+중요한 것은 객체가 다른 객체와 협력하는 방법이다.
+
+객체지향은 협력이라는 문맥 안에서 필요한 책임을 결정하고 이를 수행할 적절한 객체를 결정하는 것이 가장 중요하다.
+
+올바른 객체지항 설계의 무게중심은 항상 객체의 내부가 아니라 외부에 맞춰져 있어야 한다.
+
+데이터 중심 설계는 초점이 외부가 아니라 내부로 향한다. ➔ 객체의 구현이 이미 결정된 상태에서 다른 객체와의 협력 방법을 고민하기 때문에 이미 구현된 객체의 인터페이스에 억지로 끼워 맞추게 된다.
+
+객체가 내부에 어떤 상태이고, 그 상태를 어떻게 관리하는 지는 부가적인 문제이다.
+
+핵심은 `객체가 다른 객체와 협력하는 방법`이다.
