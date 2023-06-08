@@ -338,13 +338,388 @@ public class Movie {
 <img src="./image/그림%205.6.png">
 
 ### 변경으로부터 보호하기
+할인 여부(DiscountCondition)이 구체적인 타입을 캡슐화하고 있고 영화(Movie)의 관점에서 보면 할인 여부(DiscountCondition)의 내부를 알 수 없기 때문에 할인 여부(DiscountCondition)의 내부가 변해도 영향을 받지 않는다.
+
+영화(Movie)는 할인 여부(DiscountCondition)의 변경으로부터 영향을 받지 않는데 이처럼 `변경을 캡슐화하도록 책임을 할당하는 것을 GRASP에서는 PROTECTED VARIATIONS(변경 보호) 패턴`이라고 부른다.
 
 ### Movie 클래스 개선하기
+영화(Movie) 또한 할인 여부(DiscountCondition)와 동일한 문제가 발생하는데 해결 방법 또한 할인 여부(DiscountCondition)와 동일한 방법으로 역할의 개념을 도입해서 협력을 다형적으로 만들면 된다.
+
+#### 영화(Movie)
+* discountAmount, discountPercent와 이 인스턴스 변수를 사용하는 메서드들을 삭제한다.
+* calculateDiscountAmount라는 추상 메서드는 선언하고 서브 클래스들이 직접 할인 금액을 계산하는 방식으로 구현한다.
+```
+public abstract class Movie {
+    private String title;
+    private Duration runningTime;
+    private Money fee;
+    private List<DiscountCondition> discountConditions;
+
+    public Movie(String title, Duration runningTime, Money fee, DiscountCondition... discountConditions) {
+        this.title = title;
+        this.runningTime = runningTime;
+        this.fee = fee;
+        this.discountConditions = Arrays.asList(discountConditions);
+    }
+
+    public Money calculateMovieFee(Screening screening) {
+        if (isDiscountable(screening)) {
+            return fee.minus(calculateDiscountAmount());
+        }
+
+        return fee;
+    }
+
+    private boolean isDiscountable(Screening screening) {
+        return discountConditions.stream()
+                .anyMatch(condition -> condition.isSatisfiedBy(screening));
+    }
+
+    protected Money getFee() {
+        return fee;
+    }
+
+    abstract protected Money calculateDiscountAmount();
+}
+```
+#### 금액 할인 정책, 비율 할인 정책, 미할인 정책
+* 금액 할인 정책
+```
+public class AmountDiscountMovie extends Movie {
+    private Money discountAmount;
+
+    public AmountDiscountMovie(String title, Duration runningTime, Money fee, Money discountAmount,
+                               DiscountCondition... discountConditions) {
+        super(title, runningTime, fee, discountConditions);
+        this.discountAmount = discountAmount;
+    }
+
+    @Override
+    protected Money calculateDiscountAmount() {
+        return discountAmount;
+    }
+}
+```
+* 비율 할인 정책
+```
+public class PercentDiscountMovie extends Movie {
+    private double percent;
+
+    public PercentDiscountMovie(String title, Duration runningTime, Money fee, double percent,
+                                DiscountCondition... discountConditions) {
+        super(title, runningTime, fee, discountConditions);
+        this.percent = percent;
+    }
+
+    @Override
+    protected Money calculateDiscountAmount() {
+        return getFee().times(percent);
+    }
+}
+```
+* 미할인 정책
+```
+public class NoneDiscountMovie extends Movie {
+    public NoneDiscountMovie(String title, Duration runningTime, Money fee) {
+        super(title, runningTime, fee);
+    }
+
+    @Override
+    protected Money calculateDiscountAmount() {
+        return Money.ZERO;
+    }
+}
+```
+
+영화 예매 시스템의 영화와 할인 정책들의 구조는 최종적으로 다음과 같아진다.
+
+<img src="./image/그림%205.7.png">
+
+결론은 데이터가 아닌 책임을 중심으로 설계하고, 객체에게 중요한 것은 상태가 아닌 행동이라는 점을 명심해서 책임과 협력에 초점을 맞추는 것이다.
 
 ### 변경과 유연성
+설계를 주도하는 것은 변경으로 개발자로서 변경에 대비하는 방법은 두 가지 방법이 있다.
+* 코드를 이해하고 수정하기 쉽게 단순하게 설계
+* 코드를 수정하지 않고 변경을 수용할 수 있도록 코드를 더 유연하게 만드는 설계
+
+대부분의 경우 첫 번째 설계가 더 좋은 방법이지만 반복적으로 변경이 발생한다면 복잡성이 상승하더라도 두 번쨰 방법을 채택하는 것이 더 좋다.
+
+현재 영화 예매 시스템에서는 할인 정책을 구현하기 위해서 상속을 사용하고 있기 때문에 실행 중에 영화의 할인 정책을 변경하기 위해서는 새로운 인스턴스를 생성한 후 필요한 정보를 복사해야 하고, 변경 전후의 인스턴스가 개념적으로는 동일한 객체지만, 물리적으로는 서로 다른 객체이기 때문에 식별자의 관점에서 혼란스러울 수 있다.
+
+또한 상속을 이용할때 새로운 할인 정책이 추가된다면 인스턴스를 생성하고, 상태를 복사하고, 식별자를 관리하는 코드를 매번 추가해줘야한다. 이 일은 번거로울뿐만 아니라 오류가 발생하기도 쉽다.
+
+해결 방법은 상속 대신 `합성`을 사용하는 것이다.
+
+#### 변경 전/후 비교
+* 변경 전
+
+<img src="./image/그림%205.7.png">
+
+* 변경 후
+
+<img src="./image/그림%205.8.png">
+
+변경 후에는 금액 할인 정책에서 비율 할인 정책으로 바꾸는 일은 영화(Movie)에 연결된 할인 정책(DiscountPolicy)의 인스턴스를 교체하는 단순한 작업으로 끝난다.
+```
+Movie movie = new Movie("타이타닉",
+			Duration.ofMinutes(120),
+			Money.wons(10000),
+			new AmountDiscountPolicy(...)); // 할인 정책을 의존성 주입을 통해서 결정한다.
+movie.changeDiscountPolicy(new PercentDiscountPolicy(...));
+```
+
+설계와 코드가 변경된 것처럼 도메인 구조 또한 바뀐다.
+
+<img src="./image/그림%205.9.png">
+
+객체지향 프로그래밍은 익숙해져도 책임을 올바르게 할당하는 것은 어렵고 난해한 작업이며 절차지향 프로그래밍을 하는 이유도 책임 할당의 어려움에서 기인한다.
+
+만약 여전히 책임을 할당하는 것이 어렵다면 대안을 이용하는 방법이 있는데 일단 절차지향 코드로 실행되는 프로그램을 빠르게 작성하고 완성된 코드를 객체지향 코드로 변경하는 것이다.
 
 ## 04. 책임 주도 설계의 대안
+책임 주도 설계에 익숙해지기 위해서는 부단한 노력과 시간이 필요하다. 그러나 어느 정도 경험을 쌓은 숙련된 설계자조차도 적절한 책임과 객체를 선택하는 일에 어려움을 느끼고는 한다.
+
+이럴 때 개인적으로 돌파구를 찾기 위해 선택하는 방법은 최대한 빠르게 목적한 기능을 수행하는 코드를 작성하는 것이다. 책임과 협력에 관해 고민하기 보다는 일단 실행되는 코드를 얻고 난 후에 코드 상에 명확하게 드러나는 책임들을 올바른 위치로 이동시키는 것이다.
+
+이처럼 이해하기 쉽고 수정하기 쉬운 소프트웨어로 개선하기 위해 겉으로 보이는 동작은 바꾸지 않은 채 내부 구조를 변경하는 것을 `리팩터링(Refactoring)`이라고 부른다.
 
 ### 메서드 응집도
+#### 예매 대행(ReservationAgency)
+```
+public class ReservationAgency {
+    public Reservation reserve(Screening screening, Customer customer,
+                               int audienceCount) {
+        Movie movie = screening.getMovie();
+
+        boolean discountable = false;
+        for(DiscountCondition condition : movie.getDiscountConditions()) {
+            if (condition.getType() == DiscountConditionType.PERIOD) {
+                discountable = screening.getWhenScreened().getDayOfWeek().equals(condition.getDayOfWeek()) &&
+                        condition.getStartTime().compareTo(screening.getWhenScreened().toLocalTime()) <= 0 &&
+                        condition.getEndTime().compareTo(screening.getWhenScreened().toLocalTime()) >= 0;
+            } else {
+                discountable = condition.getSequence() == screening.getSequence();
+            }
+
+            if (discountable) {
+                break;
+            }
+        }
+
+        Money fee;
+        if (discountable) {
+            Money discountAmount = Money.ZERO;
+            switch(movie.getMovieType()) {
+                case AMOUNT_DISCOUNT:
+                    discountAmount = movie.getDiscountAmount();
+                    break;
+                case PERCENT_DISCOUNT:
+                    discountAmount = movie.getFee().times(movie.getDiscountPercent());
+                    break;
+                case NONE_DISCOUNT:
+                    discountAmount = Money.ZERO;
+                    break;
+            }
+
+            fee = movie.getFee().minus(discountAmount).times(audienceCount);
+        } else {
+            fee = movie.getFee().times(audienceCount);
+        }
+
+        return new Reservation(customer, screening, fee, audienceCount);
+    }
+}
+```
+
+예매 대행(ReservationAgency)의 reserve 메서드를 살펴보면 reserve와 같은 긴 메서드는 다양한 측면에서 코드의 유지보수에 부정적인 영향을 준다.
+* 어떤 일을 수행하는지 한눈에 파악하기 어렵기 때문에 코드를 전체적으로 이해하는데 너무 많은 시간이 걸린다.
+* 하나의 메서드 안에서 나무 많은 작업을 처리하기 떄문에 변경이 필요할 때 수정해야 할 부분을 찾기 어렵다.
+* 메서드 내부의 일부 로직만 수정하더라도 메서드의 나머지 부분에서 버그가 발생할 확률이 높다.
+* 로직의 일부만 재사용하는 것이 불가능하다.
+* 코드를 재사용하는 유일한 방법은 원하는 코드를 복사해서 붙여넣는 것뿐이므로 코드 중복을 초래하기 쉽다.
+
+결론적으로 긴 메서드는 응집도가 낮기 때문에 이해하기 어렵고 재사용하기도 여려우며 변경하기도 어렵다를 의미한다. 이런 메서드를 몬스터 메서드(monster method)라고 부른다.
+
+응집도가 낮은 메서드는 로직의 흐름을 이해하기 위해 주석이 필요한 경우가 대부분이다. 메서드가 명령문들의 구성되고, 주석을 추가해야 한다면 차라리 메서드를 작게 분해해서 각 메서드의 응집도를 높이는 것이 좋다.
+
+따라서 객체로 책임을 분배할 때 가장 먼저 할 일은 `메서드를 응집도 있는 수준으로 분해`하는 것이다.
+
+#### 예매 대행(ReservationAgency) 개선하기
+* 응집도 높은 메서드들로 잘게 분해한다.
+```
+public class ReservationAgency {
+    public Reservation reserve(Screening screening, Customer customer, int audienceCount) {
+        boolean discountable = checkDiscountable(screening);
+        Money fee = calculateFee(screening, discountable, audienceCount);
+        return createReservation(screening, customer, audienceCount, fee);
+    }
+    private boolean checkDiscountable(Screening screening) {
+        return screening.getMovie().getDiscountConditions().stream()
+            .anyMatch(condition - > isDiscountable(conditionz screening));
+    }
+    private boolean isDiscountable(DiscountCondition condition, Screening screening) {
+        if (condition.getType() == DiscountConditionType.PERIOD) {
+            return isSatisfiedByPeriod(conditionz screening);
+        }
+        return isSatisfiedBySequence(conditionz screening);
+    }
+    private boolean isSatisfiedByPeriod(DiscountCondition condition, Screening screening) {
+        return screening.getWhenScreened().getDayOfWeekO, equals(condition.getDayOfWeekO) &&
+            condition.getStartTime().compareTo(screening.getWhenScreened(), toLocalTime()) <= 0 && 
+            condition.getEndTime().compareTo(screening.getWhenScreened().toLocalTime())〉 = 0;
+    }
+    private boolean isSatisfiedBySequence(DiscountCondition condition, Screening screening) {
+        return condition.getSequence() == screening.getSequence();
+    }
+    private Money calculateFee(Screening screening, boolean discountable, int audienceCount) {
+        if (discountable) {
+            return screening.getMovie().getFee(), minus(calculateDiscountedFee(screening.getMovie())).times(audienceCount);
+        }
+        return screening.getMovie().getFee();
+    }
+    private Money calculateDiscountedFee(Movie movie) {
+        switch (movie.getMovieType()) {
+            case AMOUNT_DISCOUNT:
+                return calculateAmountDiscountedFee(movie);
+            case PERCENT.DISCOUNT:
+                return calculatePercentDisco나ntedFee(movie);
+            case NONE_DISCOUNT:
+                return calculateNoneDiscountedFee(movie);
+        }
+        throw new IllegalArgumentExceptionO;
+    }
+    private Money calculateAmountDiscountedFee(Movie movie) {
+        return movie.getDiscountAmountO;
+    }
+    private Money calculatePercentDiscountedFee(Movie movie) {
+        return movie.getFee().times(movie.getDiscountPercent());
+    }
+    private Money calculateNoneDiscountedFee(Movie movie) {
+        return movie.getFeeO;
+    }
+    private Reservation createReservation(Screening screening, Customer c나stomer, int audienceCount, Money fee) {
+        return new Reservation(customer, screening, fee, audienceCount);
+    }
+}
+```
+
+#### 수정 후의 장점
+* 수정 후에는 메서드가 어떤 일을 하는지 한눈에 알아볼 수 있고, 심지어 메서드의 구현이 주석을 모아 높은 것 처럼 보인다. 또한 큰 메서드는 작은 메서드로 나누면 한번에 기억해야 하는 정보를 줄일수가 있다.
+* 수정 후의 코드는 변경, 수정하기도 쉽다. 작고, 명확하며, 한 가지 일에 집중하는 응집도 높은 메서드는 변경 가능한 설계를 이끌어 내는 기반이 된다.
+
+#### 아직 남은 문제점
+* 메서드 들의 응집도 자체는 높아졋지만, 아직 메서드들을 담고있는 예매 대행(ReservationAgency)의 응집도는 여전히 낮다.
+* 예매 대행(ReservationAgency)의 응집도를 높이기 위해서는 변경의 이유가 다른 메서드들을 적절한 위치로 분배해야 한다.
+* 적절한 위치란 메서드가 사용하고 있는 데이터를 정의하고 있는 클래스를 의미한다.
 
 ### 객체를 자율적으로 만들자
+자신이 소유하고 있는 데이터를 자기 스스로 처리하도록 만드는 것이 자율적인 객를 만드는 지름 길이기 때문에 메서드가 사용하고 있는 데이터를 저장하고 있는 클래스로 메서드를 이동시키면 된다.
+
+isDiscountable 메서드를 보면 예매 대행에서 접근자를 통해서 하고 있는데 이러한 방식이 아닌 할인 조건 안으로 메서드를 이동시켜야 한다.
+
+* 예매 대행(ReservationAgency)
+```
+public class ReservationAgency {
+    public Reservation reserve(Screening screening, Customer customer,
+                               int audienceCount) {
+        boolean discountable = checkDiscountable(screening);
+        Money fee = calculateFee(screening, discountable, audienceCount);
+        return createReservation(screening, customer, audienceCount, fee);
+    }
+
+    private boolean checkDiscountable(Screening screening) {
+        return screening.getMovie().getDiscountConditions().stream()
+                .anyMatch(condition -> condition.isDiscountable (screening)); // 변경된 코드
+    } 
+
+    private Money calculateFee(Screening screening, boolean discountable,
+                               int audienceCount) {
+        if (discountable) {
+            return screening.getMovie().getFee()
+                    .minus(calculateDiscountedFee(screening.getMovie()))
+                    .times(audienceCount);
+        }
+
+        return  screening.getMovie().getFee();
+    }
+
+    private Money calculateDiscountedFee(Movie movie) {
+        switch(movie.getMovieType()) {
+            case AMOUNT_DISCOUNT:
+                return calculateAmountDiscountedFee(movie);
+            case PERCENT_DISCOUNT:
+                return calculatePercentDiscountedFee(movie);
+            case NONE_DISCOUNT:
+                return calculateNoneDiscountedFee(movie);
+        }
+
+        throw new IllegalArgumentException();
+    }
+
+    private Money calculateAmountDiscountedFee(Movie movie) {
+        return movie.getDiscountAmount();
+    }
+
+    private Money calculatePercentDiscountedFee(Movie movie) {
+        return movie.getFee().times(movie.getDiscountPercent());
+    }
+
+    private Money calculateNoneDiscountedFee(Movie movie) {
+        return movie.getFee();
+    }
+
+    private Reservation createReservation(Screening screening,
+                                          Customer customer, int audienceCount, Money fee) {
+        return new Reservation(customer, screening, fee, audienceCount);
+    }
+}
+```
+
+* 할인 조건(DiscountCondition)
+```
+public class DiscountCondition {
+    private DiscountConditionType type;
+
+    private int sequence;
+
+    private DayOfWeek dayOfWeek;
+    private LocalTime startTime;
+    private LocalTime endTime;
+
+    public DiscountCondition(int sequence){
+        this.type = DiscountConditionType.SEQUENCE;
+        this.sequence = sequence;
+    }
+
+    public DiscountCondition(DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime){
+        this.type = DiscountConditionType.PERIOD;
+        this.dayOfWeek= dayOfWeek;
+        this.startTime = startTime;
+        this.endTime = endTime;
+    }
+
+    public boolean isDiscountable(Screening screening) { // 추가된 코드
+        if (type == DiscountConditionType.PERIOD) {
+            return isSatisfiedByPeriod(screening);
+        }
+
+        return isSatisfiedBySequence(screening);
+    }
+
+    private boolean isSatisfiedByPeriod(Screening screening) {
+        return screening.getWhenScreened().getDayOfWeek().equals(dayOfWeek) &&
+                startTime.compareTo(screening.getWhenScreened().toLocalTime()) <= 0 &&
+                endTime.compareTo(screening.getWhenScreened().toLocalTime()) >= 0;
+    }
+
+    private boolean isSatisfiedBySequence(Screening screening) {
+        return sequence == screening.getSequence();
+    }
+}
+```
+
+변경 후의 코드는 책임 주도 설계 방법을 적용해서 구현한 코드의 초기 모습과 유사해졌고, POLYMORPHISM(다형성) 패턴과 PROTECTED VARIATIONS(변경 보호) 패턴을 적용하면 최종 설계와 유사한 모습의 코드가 완성된다.
+
+책임 주도 설계 방법에 익숙하지 않다면 일단 데이터 중심으로 구현한 후 이를 리팩터링하더라도 유사한 결과를 얻을 수 있고, 처음부터 책임 주도 설계 방법을 따르는 것보 다 동작하는 코드를 작성한 후에 리팩터링하는 것이 더 훌륭한 결과물을 낳을 수도 있다.
+
+캡슐화, 결합도, 응집도를 이해하고 훌륭한 객체지향 원칙을 적용하기 위해 노력한다면 책임 주도 설계 방법을 단계 적으로 따르지 않더라도 유연하고 깔끔한 코드를 얻을 수 있다.
