@@ -64,3 +64,95 @@
 
 ### 다미터 법칙
 디미터 법칙은 객체의 내부 구조에 강하게 결합되지 않도록 협력 경로를 제한하는 것이다. 자바나 C#과 같이 '도트(.)'를 이용해 메시지 전송을 표현하는 언어에서는 "오직 하나의 도트만 사용하라"라는 말로 요약 되기도 한다.
+* 낯선 자에게 말하지 말라
+* 인접한 이웃하고만 말하라
+
+다미터 법칙을 따르기 위해서는 클래스 내부의 메서드가 아래 조건을 만족해야 한다.
+* this 객체
+* 메서드 매개변수
+* this의 속성
+* this의 속성인 컬렉션의 요소
+* 메서드 내에서 생성된 지역 객체
+
+```
+// 다미터 법칙 위반한 코드
+screening.getMovie().getDiscountConditions();
+
+// 다미터 법칙을 지킨 코드
+screening.calculateFee(audienceCount);
+```
+
+디미터의 법칙을 따르면 부끄럼타는 코드(shy code)를 작성할 수 있다.
+* 부끄럼타는 코드란 불필요한 어떤 것도 다른 객체에게 보여주지 않으며 다른 객체의 구현에 의존하지 않는 코드
+
+정보를 처리하는 데 필요한 책임을 정보를 알고 있는 객체에게 할당하기 때문에 응집도가 높은 객체가 만들어진다.
+
+### 묻지 말고 시켜라
+다미터 법칙은 `훌륭한 메시지는 객체의 상태에 관해 묻지말고 원하는 것을 시켜야 한다는 사실을 강조하는데 묻지 말고 시켜라는 이런 스타일의 메시지 작성을 장려하는 원칙을 가리키는 용어다.
+
+객체의 외부에서 해당 객체의 상태를 기반으로 결정을 내리는 것은 객체의 캡슐화를 위반한다. 훌륭한 인터페이스를 수확하기 위해서는 객체가 어떻게 작업을 수행하는지를 노출해서는 안된다. 인터페이스는 객체가 어떻게 하는지가 아니라 무엇을 하는지를 서술해야 한다.
+
+### 의도를 드러내는 인터페이스
+켄트 벡(Kent Beck)은 Smalltalk Best Practice Patterns라는 책에서 메서드를 명명하는 두 가지 방법을 설명했다.
+1. 메서드가 작업을 어떻게 수행하는지를 나타내도록 이름 짓는 것  
+2. 어떻게가 아니라 무엇을 하는지를 드러내는 것
+
+첫 번째 방법은 메서드가 작업을 어떻게 수행하는지를 나타내도록 이름 짓는 것이다.
+* 메서드를 명명할 때 옳지 않은 방법
+  * 메서드에 대해 제대로 커뮤니케이션하지 못하는데 두 메서드는 동일한 작업을 수행하지만 메서드의 이름이 다르기 때문에 내부 구현을 이해하지 못하면 동일한 작업을 수행하는 사실을 모른다.
+  * 메서드 수준에서 캡슐화를 위반하는데 클라이언트에게 협력하는 객체의 종류를 알도록 강조하기 때문에 참조하는 객체만 변경하는 것이 아니라 메서드 또한 변경해야 하는 것을 의미하고, 이런 메서드를 사용한 설계는 변경에 취약해진다.
+```
+public class Periodcondition {
+  public boolean isSatisfiedByPeriod(Screening screening) { ... }
+}
+
+public class Sequencecondition {
+  public boolean isSatisfiedBySequence(Screening screening) { ... }
+}
+```
+
+두 번째 방법은 어떻게가 아니라 무엇을 하는지를 드러내는 것이다. 무엇을 하는지를 드러내는 이름은 코드를 읽고 이해하기 쉽게 만들뿐만 아니라 유연한 코드를 낳는 지름길이다.
+* 메서드를 명명할 때 옳은 방법
+  * 동일한 목적을 가진다는 것을 메서드의 이름을 통해 명확하게 표현한다.
+```
+public class Periodcondition {
+  public boolean isSatisfiedBy(Screening screening) { ... }
+}
+
+public class Sequencecondition {
+  public boolean isSatisfiedBy(Screening screening) { ... }
+}
+```
+
+하지만 단순히 메서드가 이름이 같다고 동일한 메시지를 처리하는 것이 아니기 때문에 클라이언트가 두 메서드를 가진 객체를 동일한 타입으로 간주할 수 있도록 동일한 타입 계층으로 묶어야 한다.
+```
+public interface DiscountCondition {
+  boolean isSatisfiedBy(Screening screening);
+}
+
+public class Periodcondition implements DiscountCondition {
+  public boolean isSatisfiedBy(Screening screening) { ... }
+}
+
+public class Sequencecondition implements DiscountCondition {
+  public boolean isSatisfiedBy(Screening screening) { ... }
+}
+```
+
+객체에게 묻지 말고 시키되 구현 방법이 아닌 클라이언트의 의도를 드러내야 한다. 이것이 이해하기 쉽고 유연한 동시에 협력적인 객체를 만드는 가장 기본적인 요구사항이다.
+
+### 함께 모으기
+디미터 법칙, 묻지 말고 시켜라 스타일, 의도를 드러내는 인터페이스를 이해할 수 있는 좋은 방법 중 하 나는 이런 원칙을 위반하는 코드의 모습을 살펴보는 것인데 부적합한 예와 적합한 예는 아래와 같다.
+
+#### 다미터 법칙을 위반하는 티켓 판매 도메인
+아래 코드는 다미터 법칙을 위반할 때 나타나는 기차 충돌 스타일의 전형적인 모습을 잘 보여준다.
+```
+audience.getBag().minusAmount(ticket.getFee());
+```
+Theater가 Audience와 Bag에도 메시지를 전송하기 때문에 퍼블릭 인터페이스 뿐만 아니라 내부 구조에 대해서도 결합된다.
+
+다미터 법칙을 위반하는 설계는 `인터페이스와 구현의 분리 원칙`을 위반한다. 객체의 내부 구조는 구현에 해당하고 다미터 법칙을 위반하면 클라이언트에게 구현을 노출한다는 것을 의미하며, 작은 요구사항 변경에도 쉽게 무너지는 불안정한 코드가 된다.
+
+<img src="./image/그림%206.8.png">
+
+#### 묻지 말고 시켜라
