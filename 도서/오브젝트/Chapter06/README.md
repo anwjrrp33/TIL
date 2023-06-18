@@ -186,3 +186,53 @@ public class Audience {
 결합도가 낮으면서도 의도를 명확히 드러내는 간결한 협력을 원한다. 디미터 법칙과 묻지 말고 시켜라 스타일, 의도를 드러내는 인터페이스가 우리를 도울 것이다.
 
 ## 03. 원칙의 함정
+법칙에는 예외가 없지만 원칙에는 예외가 넘처난다. 설계는 트레이드오프의 산물이다.
+원칙이 현재 상황에 부적합하다고 판단된다면 과감하게 원칙을 무시하고, 원칙을 아는 것보다 더 중요한 것은 `언제 원칙이 유용하고 유용하지 않는 지를 판단`하는 것이다.
+
+### 다미터 법칙은 하나의 도트(.)를 강제하는 규칙이 아니다
+디미터 법칙은 "오직 하나의 도트만을 사용하라"라는 말로 요약되기도 한다.
+아래 코드는 위반한 것처럼 보이지만 IntStream이라는 동일한 클래스의 인스턴스를 계속 반환하는 것으로 위반하지 않는다. 
+```
+-- 메서드 체이닝
+IntStream.of(1, 15, 20, 3, 9).filter(x -> x > 10).distinct().count();
+```
+
+그러나 디미터 법칙은 결합도과 관련된 것이며, 객체의 내부 구조가 외부로 노출되는 경우로 한정된다. 기차 충돌처럼 보이는 코드라도 객체의 내부 구현에 대한 어떤 정보도 외부로 노출하지 않는다면 디미터 법칙을 준수한 것이다.
+
+### 결합도와 응집도의 충돌
+위임 메서드를 통해서 Theater의 구조를 Audience에게 위임 메서드를 추가한다.
+```
+public class Theater {
+  public void enter(Audience audience) {
+    if (audience,getBag().haslnvitation()) {
+      Ticket ticket = ticketseller.getTicketOffice().getTicket(); 
+      audience.getBag().setTicket(ticket);
+    } else {
+      Ticket ticket = ticketSeller.getTicketOffice().getTicket(); 
+      audience.getBag().minusAmount(ticket.getFee());
+      ticketseller.getTicketOffice().plusAmount(ticket. getFee()); 
+      audience.getBag().setTicket(ticket);
+    } 
+  }
+}
+```
+```
+public class Audience {
+  public Long buy(Ticket ticket) {
+    if (bag.hasInvitation()) { 
+      bag.setTicket(ticket); 
+      return 0L;
+    } else {
+      bag.setTicket(ticket); 
+      bag.minusAmount(ticket.getFee()); 
+      return ticket.getFee();
+    }
+  }
+}
+```
+Audience는 상태와 함께 상태를 조작하는 행동도 포함해서 응집도가 높아졌다. 하지만 항상 묻지말고 시켜라와 다미터 법칙을 준수하는 것이 항상 긍정적인 결과가 되는 것이 아니다.
+
+위임 메서드를 통해 객체의 내부 구조를 감추는 것은 결합도를 낮추고 응집도를 높이는 효과적인 방법이다. 그러나 맹목적으로 위임 메서드를 추가하면 같은 퍼블릭 인터페이스 안에 어울리지 않는 오퍼레이션들이 공존하게 된다. 결과적으로 상관 없는 책임들을 한꺼번에 떠안게 되기 때문에 응집도가 낮아진다.
+
+클래스는 하나의 변경 원인만을 가져야 한다. 디미터 법칙과 묻지 말고 시켜라 원칙을 무작정 따르면 응집도는 낮아질 것이다.
+
