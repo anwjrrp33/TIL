@@ -63,6 +63,52 @@
   * 양식에 맞게 결과를 출력한다.
     * "이름: {직원명}, 급여: {계산된 금액}" 형식에 따라 출력 문자열을 생성한다.
 
+```
+import readline from "readline";
+import { stdin as input, stdout as output } from "process";
+
+const rl = readline.createInterface({ input, output });
+
+const employees = ["직원A", "직원B", "직원C"];
+const basePays = [400, 300, 250];
+
+// 1. 직원의 급여를 계산한다
+const main = (name: string) => {
+  const taxRate = getTaxRate();
+  const pay = calculatePayFor(name, taxRate);
+  describeResult(name, pay);
+};
+
+// 1-1. 사용자로부터 소득세율을 입력받는다
+const getTaxRate = () => {
+  rl.on("line", (line: string) => {
+    // 1-1-1. "세율을 입력하세요: "라는 문장을 화면에 출력한다
+    // 1-1-2. 키보드를 통해 세율을 입력받는다
+    console.log("세율을 입력하세요: ", line);
+    rl.close();
+    return line;
+  });
+};
+
+// 2. 직원의 급여를 계산한다
+const calculatePayFor = (name: string, taxRate: number) => {
+  // 1-2-1. 전역 변수에 저장된 직원으 ㅣ기본급 정보를 얻는다
+  const index = employees.findIndex((i) => i === name);
+  const basePay = basePays[index];
+  // 1-2-2. 급여를 계산한다
+  return basePay - basePay * taxRate;
+};
+
+// 3. 양식에 맞게 결과를 출력한다
+const describeResult = (name, pay) => {
+  // 1-3-1. "이름: {직원명}, 급여: {계산된 금액}" 형식에 따라 출력 문자열을 생성한다
+  return `이름: ${name}, 급여: ${pay}`;
+};
+
+// 프로시저 호출
+main("직원C");
+```
+
 기능 분해의 결과는 최상위 기능을 수행하는 데 필요한 절차들을 실행되는 시간 순서에 따라 나열한 것으로 책의 목차를 정리하고 그 안에 내용을 채워 넣는 것과 유사하다.
 
 <img src="./image/그림%207.1.png">
@@ -135,3 +181,299 @@
 비밀을 결정하고 모듈을 분해한 후에는 기능 분해를 이용해 모듈에 필요한 퍼블릭 인터페이스를 구현할 수 있다.
 
 * 모듈이 감춰야 하는 비밀은 두가지가 있다.
+  * 복잡성
+    * 모듈 내부가 너무 복잡한 경우 이해하고 사용하기 어렵다.
+    * 외부에 모듈을 추상화할 수 있는 간단한 인터페이스를 제공해서 복잡도를 낮춘다.
+  * 변경 가능성
+    * 변경 가능한 설계 결정이 외부에 노출될 경우 실제로 변경이 발생했을 때 파급효과가 커진다.
+    * 변경 발생 시 하나의 모듈만 수정하면 되도록 변경 가능한 설계 결정을 모듈 내부로 감추고 외부에는 쉽게 변경되지 않을 인터페이스를 제공한다.
+
+> 데이터와 메서드를 하나의 단위로 통합하고, 퍼블릭 메서드를 통해서만 접근하도록 허용하는 방법은 데이터 캡슐화라고 한다. 정보 은닉과 데이터 캡슐화는 동일한 개념이 아니다. 변경과 관련된 비밀을 감춘다는 측면에서 정보 은닉과 캡슐화는 동일 개념을 가리키는 두 가지 다른 용어이며, 데이터 캡슐화는 비밀의 한 종류인 데이터를 감추는 캡슐화의 한 종류일 뿐이다.
+
+앞서 나온 급여 관리 시스템을 구원할 수 있는 방법은 함께 사용되는 데이터를 자신의 비밀로 삼는 모듈을 만들어서 직원 정보라는 비밀을 내부로 감추고 외부에 대해서는 퍼블릭 인퍼테이스만 노출시켜야 한다.
+* 기존 전역 변수들이 Employees라는 모듈 내부로 숨겨진다.
+* 외부에서는 퍼블릭 인터페이스에 포함된 함수를 통해서만 내부 변수를 조작할 수 있다.
+
+```
+const employees = ["직원A", "직원B", "알바A"];
+const basePays = [400, 300, 250];
+const hourlys = [false, false, true];
+const timeCards = [0, 0, 120];
+
+const calculatePay = (name: string, taxRate: number) => {
+  if (hourly(name)) {
+    return calculateHourlyPayFor(name, taxRate);
+  } else {
+    return calculatePayFor(name, taxRate);
+  }
+};
+
+const hourly = (name: string) => {
+  return hourlys[employees.findIndex((e) => e === name)];
+};
+
+const calculateHourlyPayFor = (name: string, taxRate: number) => {
+  const index = employees.findIndex((e) => e === name);
+  const basePay = basePays[index] * timeCards[index];
+  return basePay - basePay * taxRate;
+};
+
+const calculatePayFor = (name: string, taxRate: number) => {
+  const index = employees.findIndex((e) => e === name);
+  const basePay = basePays[index];
+  return basePay - basePay * taxRate;
+};
+
+const sumOfBasePays = () => {
+  let result = 0;
+  employees.forEach((employee) => {
+    if (!hourly(employee)) {
+      result += basePays[employees.findIndex((e) => e === employee)];
+    }
+  });
+  return result;
+};
+
+export const Employee = {
+  calculatePay,
+  sumOfBasePays,
+};
+```
+
+```
+import { Employee } from "./employees";
+
+const main = (operation, args = {}) => {
+  switch (operation) {
+    case "pay":
+      calculatePay(args["name"]);
+    case "basePays":
+      sumOfBasePays();
+  }
+};
+
+const calculatePay = (name: string) => {
+  const taxRate = getTaxRate();
+  const pay = Employee.calculatePay(name, taxRate);
+  describeResult(name, pay);
+};
+
+const getTaxRate = () => {
+  let taxRate = 0;
+  rl.on("line", (line: string) => {
+    console.log("세율을 입력하세요: ", line);
+    rl.close();
+    taxRate = Number(line);
+  });
+  return taxRate;
+};
+
+const describeResult = (name: string, pay: number) => {
+  return `이름: ${name}, 급여: ${pay}`;
+};
+
+const sumOfBasePays = () => {
+  Employee.sumOfBasePays();
+};
+```
+
+### 모듈의 장점과 한계
+#### 모듈 내부의 변수가 변경되더라도 모듈 내부에만 영향을 미친다.
+* 모듈을 사용하면 모듈 내부에서 정의된 변수를 직접 참조하는 코드의 위치를 모듈 내부로 제한할 수 있다.
+* 어떤 데이터가 변경됐을 때 영향을 받는 함수를 찾기 위해 데이터 정의 모듈만 검색하면 된다.
+* 전체 함수를 일일이 분석할 필요가 없다.
+* 데이터 변경으로 인한 파급효과를 제어하여 수정하기 쉽고, 디버깅하기가 더 용이하다.
+
+#### 비즈니스 로직과 사용자 인터페이스에 대한 관심사를 분리한다.
+* 수정된 코드에서 Employees 모듈은 비즈니스 로직과 관련된 관심사만을 담당한다.
+* 사용자 인터페이스와 관련된 관심사는 main 쪽에 위치한다.
+
+#### 전역 변수와 전역 함수를 제거해서 네임스페이스 오염(namespace pollution)을 방지한다.
+* 모듈의 한 가지 용도는 네임스페이스를 제공하는 것으로 변수와 함수를 모듈 내부에 포함시키기 때문에 다른 모듈에서도 동일한 이름을 사용할 수 있다.
+* 모듈은 전역 네임스페이스의 오염을 방지하는 동시에 이름 충돌의 위험을 완화한다.
+
+모듈은 기능이 아닌, 변경의 정도에 따라 시스템을 분해하게 한다. 모듈 내부는 높은 응집도를 유지하고 다른 모듈과는 낮은 결합도를 유지한다. 왜냐하면, 각 모듈은 외부에 감춰야 하는 비밀과 관련성 높은 데이터와 함수의 집합이기 때문이다.
+
+하향식 기능 분해와 달리 모듈은 감춰야 할 데이터를 결정하고 데이터를 조작하는 데 필요한 함수를 결정한다. 즉, 기능이 아닌 데이터를 중심으로 시스템을 분해하는 것이다.
+
+모듈은 태생적으로 변경을 관리하기 위한 구현 기법이기 때문에 추상화 관점에서의 한계점이 명확하다. 모듈의 가장 큰 단점은 인스턴스의 개념을 제공하지 않는다는 것이다. 개별 직원을 독립적인 단위로 다루기 위해서는 다수의 직원 인스턴스가 존재하는 추상화 메커니즘이 필요하다. (따라서 추상 데이터 타입이라는 개념이 등장)
+
+## 04. 데이터 추상화와 추상 데이터 타입
+### 추상 데이터 타입
+* 프로그래밍 언어에서 타입(type)
+  * 변수에 저장할 수 있는 내용물의 종류와 변수에 적용될 수 있는 연산의 가짓수
+  * 저장된 값에 대해 수행될 수 있는 연산의 집합을 결정하기 때문에 값의 행동을 예측할 수 있게 한다.
+
+기능 분해의 시대에 사용되던 절차형 언어들은 적은 수의 내장 타입만을 제공하고, 새로운 타입을 추가하는 것이 제한적이었다. 이 대 주로 사용된 추상화는 프로시저 추상화였다. 리스코프는 프로시저 추상화의 한계를 인지하고 보완하기 위해 데이터 추상화의 개념을 제안했다.
+
+추상 데이터 타입은 프로시저 추상화 대신 데이터 추상화를 기반으로 소프트웨어를 개발하게 한 최초의 발걸음으로 추상 데이터 타입을 구현하려면 다음과 같은 프로그래밍 언어의 지원이 필요하다.
+* 타입 정의를 선언할 수 있어야 한다.
+* 타입의 인스턴스를 다루기 위해 사용 가능한 오퍼레이션 집합 정의할 수 있어야한다.
+* 제공된 오퍼레이션을 통해서만 조작할 수 있도록 데이터를 외부로부터 보호할 수 있어야 한다.
+* 타입에 대해 여러 인스턴스 생성할 수 있어야 한다.
+
+리스코프는 추상 데이터 타입을 정의하기 위해 제시한 언어적인 메커니즘을 `오퍼레이션 클러스터`라고 불렀다. 실제로 과거에도 모듈 개념 기반으로 추상 데이터 타입을 구현해왔다. 하지만, 모방하는 것과 언어 차원에서 지원하는 것은 다른 이야기다.
+
+Ruby의 경우 struct를 이용해 추상 데이터 타입을 구현 가능하고, 이를 통해서 추상 데이터 타입을 구현해본다.
+```
+-- 이름(name), 기본급 (basePay), 아르바이트 직원 여부(hourly), 작업시간(timeCard)을 비밀로 가지는 추상 데이터 타입
+Employee = Struct.new(:name, :basePay, :hourly, :timeCard) do
+End
+```
+
+
+```
+-- 내부에 캡슐화할 데이터를 결정했다면 추상 데이터 타입에 적용할 수 있는 오퍼레이션을 결정해야 한다.
+Employee = Struct.new(:name, :basePay, :hourly, :timeCard) do
+    def calculatePay(taxRate)
+        if(hourly) then
+            return calculateHourlyPay(taxRate)
+        end
+        return calculateSalariedPay(taxRate)
+    end
+
+private
+  def calculateHourlyPay(taxRate)
+    return (basePay * timeCard) - (basePay * timeCard) * taxRate 
+  end
+
+  def calculateSalariedPay(taxRate) return basePay - (basePay * taxRate)
+  end 
+end
+```
+
+```
+-- 개별 직원의 기본급을 계산한다.
+-- 아르바이트 직원의 경우 기본급이 없기 때문에 0을 반환한다.
+Employee = Struct.new(:namez :basePay, :hourly, :timeCard) do 
+  def monthlyBasePay()
+    if (hourly) then return 0 end
+    return basePay 
+  end
+end
+```
+
+```
+-- 급여 계산은 인스턴스를 찾은 후 calculatePay 오퍼레이션을 호출한다.
+def calculatePay(name) 
+  taxRate = getTaxRate()
+  for each in $employees
+    if (each.name == name) then employee = each; break end 
+  end
+  pay = employee.calculatePay(taxRate)
+  puts(describeResult(namez pay)) 
+end
+```
+
+```
+-- 정규 직원 전체에 대한 기본급 총합
+def sumOfBasePays() 
+  result = 0
+  for each in $employees
+    result += each.monthlyBasePay() 
+  end
+  puts(result) 
+end
+```
+
+* 추상 데이터 타입에 대한 관점
+  * 추상 데이터 타입은 세상을 바라보는 방식에 좀 더 근접해지도록 추상화 수준을 향상시킨다.
+  * 전체 직원을 캡슐화하는 Employees 모듈보다는 좀 더 개념적으로 사람들의 사고방식에 가깝다.
+  * 추상 데이터 타입 정의를 기반으로 객체 생성은 가능하지만, 여전히 데이터와 기능을 분리해서 바라본다는 점을 주의해야 한다.
+  * 추상 데이터 타입은 말 그대로 시스템의 상태를 저장할 데이터를 표현한다. 기능을 구현하는 핵심 로직은 외부에 존재한다.
+  * 추상 데이터 타입은 프로그래밍 언어의 관점에서 내장 데이터 타입과 동일하지만, 단지 개발자가 타입을 정의할 수 있다는 점이 다를 뿐이다.
+
+## 05. 클래스
+### 클래스는 추상 데이터 타입인가?
+클래스와 추상 데이터 타입의 차이는 상속과 다형성 지원 유무이다. 클래스는 상속과 다형성을 지원하며 추상 데이터 타입은 지원하지 않는다. 이처럼 상속과 다형성을 지원하지 않는 추상 데이터 타입 기반의 프로그래밍 패러다임을 `객체기반 프로그래밍(Object-Based Programming)`이라 부르기도 한다.
+
+윌리엄 쿡의 Object-Oriented Programming Versus Abstract Data Types 서적에서 정의한 객체지향과 추상 데이터 타입 간의 차이는 아래와 같다.
+* 클래스
+  * 절차를 추상화(procedural abstraction)
+* 추상 데이터 타입
+  * 타입을 추상화(type abstraction)
+
+타입 추상화는 오퍼레이션을 기준으로 타입을 통합하는 데이터 추상화 기법이다.
+<img src="./image/그림%207.4.png">
+
+클래스는 타입을 기준으로 절차들을 통합하는 절차 추상화 기법이다.
+<img src="./image/그림%207.5.png">
+
+### 추상 데이터 타입에서 클래스로 변경하기
+추상 데이터 타입을 구현한 Employees에서는 하나의 타입 안에 두 가지 직원 타입을 캡슐화했고, 클래스를 이용하는 객체지향에선 각 직원 타입을 독립적인 클래스로 구현해서 두 개의 타입이 존재한다는 사실을 명시적으로 표현했기 때문에 두 개의 클래스로 코드가 분배된다.
+
+```
+-- 직원
+class SalariedEmployee < Employee 
+  def initialize(namez basePay)
+    super(name, basePay) 
+  end
+
+  def calculatePay(taxRate)
+    return basePay — (basePay * taxRate)
+  end
+  
+  def monthlyBasePay() 
+    return basePay
+  end 
+end
+```
+
+```
+-- 아르바이트
+class HourlyEmployee < Employee 
+  attr_reader :timeCard
+  def initialize(name, basePay, timeCard)
+  super(name, basePay)
+  @timeCard = timeCard end
+
+  def calculatePay(taxRate)
+    return (basePay * timeCard) - (basePay * timeCard) * taxRate
+  end
+  
+  def monthlyBasePay() 
+    return 0
+  end 
+end
+```
+
+```
+-- 메시지를 수신한 객체는 자신의 클래스에 구현된 메서드를 이용한다.
+def sumOfBasePays() 
+  result = 0
+  for each in $employees
+    result += each.monthlyBasePay() 
+  end
+  puts(result) 
+end
+```
+
+### 변경을 기준으로 선택하라
+단순히 클래스를 구현 단위로 사용한다는 것이 객체지향 프로그래밍을 한다는 것을 의미하지는 않는다. 타입을 기준으로 절차를 추상화하지 않았다면 그것은 객체지향 분해가 아니다.
+
+* 클래스가 추상 데이터 타입의 개념을 따르는가에 대한 확인 방법
+  * 클래스 내부에 인스턴스 타입을 표현하는 변수가 있는지를 살펴본다. ("hourly = true는 아르바이트 직원이다."처럼 직원 유형을 저장하는 변수)
+  * 인스턴스 변수에 저장된 값을 기반으로 메서드 내에서 타입을 명시적으로 구분하는 방식은 객체지향 위반한 것으로 간주한다.
+
+객체지향에서는 타입 변수를 이용한 조건문을 다형성을 대체하고, 클라이언트가 객체의 타입을 확인한 후 적절한 메서드를 호출하는 것이 아니라 객체가 메시지를 처리할 적절한 메서드를 선택한다. 이 때문에 객체지향이란 조건문을 제거하는 것이란 편협한 견해가 퍼졌다.
+
+조건문을 사용하는 방식은 기피하는 이유는 변경 때문으로 타입이 추가되면 값을 체크하는 조건문을 하나씩 찾아서 수정해야 하지만 객체지향은 상위 계층에 추가하고 필요한 메서드는 오버라이딩하면 되기 때문에 클라이언트 코드를 수정할 필요가 없다.
+
+<img src="./image/그림%207.6.png">
+
+기존 코드에 아무런 영향도 미치지 않고 새로운 객체 유형과 행위를 추가할 수 있는 객체지향의 특성을 개방—폐쇄 원칙(Open—Closed Principle. OCP)라고 하고 이 때문에 변경하고 확장하기 쉬운 구조를 설계할 수 있는 이유다.
+
+설계는 변경과 관련된 것이다. 변경의 방향성과 발생 빈도에 따라 설계의 유용성이 결정된다. 추상 데이터 타입와 객체지향 설계의 유용성은 다음과 같은 경우에 따라 달라진다.
+1. 요구되는 변경의 압력이 타입 추가에 관한 것인지
+2. 요구되는 변경의 압력이 오퍼레이션 추가에 관한 것인지
+1번이 더 강하면 객체지향, 2번이 더 강하면 추상 데이터 타입을 선택한다. `객체지향적인 접근법이 모든 경우에 올바른 해결 방법은 아니다.`
+
+새로운 타입 추가에 대해서 객체지향은 클래스를 새로 만들고 메서드를 오버라이딩하면 된다. 반면, 추상 데이터 타입은 코드를 굉장히 수정해야 한다. 반면, 추상 데이터 타입은 오퍼레이션을 추가하려면 하나만 만들면 된다. 반면, 객체지향은 세부 클래스를 수정해야 한다.
+
+### 협력이 중요하다
+* 객체지향에서 중요한 것은 역할, 책임, 협력이다.
+* 객체지향은 기능을 수행하기 위해 객체들이 협력하는 방식에 집중한다.
+* 협력이라는 문맥 없이 객체를 고립시킨 채 오퍼레이션의 구현 방식을 타입별로 분배하는 것은 올바른 접근법이 아니다.
+* 객체가 참여할 협력을 결정하고 협력에 필요한 책임을 수행하기 위해 어떤 객체가 필요한지 고민하라
+* 책임을 다양한 방식으로 수행해야 한다면 타입 계층 안에 절차를 추상화하자.
+* 타입 계층과 다형성은 협력이라는 문맥 안에서 책임을 수행하는 방법에 관해 고민한 결과물이어야 한다. 그 자체가 목적이 되어서는 안 된다.
