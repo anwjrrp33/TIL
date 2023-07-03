@@ -81,4 +81,84 @@ public class Periodcondition implements Discountcondition {
 * 코드 관점에서 주인공은 클래스로 컴파일타임 의존성이 다루는 주제는 클래스 사이의 의존성이다.
 * 런타임 의존성과 컴파일타임 의존성은 다를 수 있으며, 유연하고 재사용 가능한 코드를 설계를 위해서는 두 종류의 의존성이 서로 달라야 한다.
 
+영화 예매 시스템을 예를 들면 코드 작성 시점의 컴파일 의존성에서는 Movie는 추상클래스인 DiscountPolicy에만 의존하도록 설계되있고, 실제 코드를 봐도 AmountDiscountPolicy나 PercentDiscountPolicy에 대해서 언급조차 하지 않는다.
 <img src="./image/그림%208.5.png">
+
+```
+public class Movie {
+  ...
+  private DiscountPolicy discountPolicy;
+  
+  public Movie(String title, Duration runningTime, Money fee, DiscountPolicy discountPolicy) {
+    ...
+    this.discountPolicy = discountPolicy;
+  }
+
+  public Money calculateMovieFee(Screening screening) {
+    return fee.minus(discountPolicy.calculateDiscountAmount(screening));
+  }
+}
+```
+
+하지만 런타임 의존성에서는 Movie 인스턴스는 실행시점에 DiscountPolicy가 아닌 AmountDiscountPolicy 인스턴스와 PercentDiscountPolicy 인스턴스와 협력해야 한다.
+
+<img src="./image/그림%208.6.png">
+
+
+Movie는 DiscountPolicy라는 추상 클래스에 컴파일타임 의존성을 가지고, 이를 실행 시에 AmountDiscountPolicy, PercentDiscountPolicy 인스턴스에 대한 런타임 의존성으로 대체하는데 `유연하고 재사용 가능한 설계를 위해서는 동일한 소스코드 구조를 가지고 다양한 실행 구조`를 만들 수 있어야 한다.
+
+어떤 클래스의 인스턴스가 다양한 클래스의 인스턴스와 협력하기 위해서는 협력할 인스턴스의 구체적인 클래스를 알아서는 안 되는데 실제로 협력할 객체가 어떤 것인지는 런타임에 해결해야 한다.
+
+클래스가 협력할 객체의 클래스를 명시적으로 드러내고 있다면 다른 클래스의 인스턴스와 협력할 가능성 자체가 없어지기 때문에 `컴파일타임 구조와 런타임 구조 사이의 거리가 멀면 멀수록 설계가 유연해지고 재사용이 가능`해진다.
+
+### 컨텍스트 독립성
+* 구체적인 클래스를 알면 알수록 그 클래스가 사용되는 특정한 문맥에 강하게 결합되기 때문에 클래스는 자신과 협력할 객체의 구체적인 클래스에 대해 알아서는 안 된다.
+* 클래스가 사용될 특정한 문맥에 대해 최소한의 가정만으로 이뤄져 있다면 다른 문맥에서 재사용하기가 더 수월해지고 이를 `컨텍스트 독립성`이라고 부른다.
+* 설계가 유연해지기 위해서는 가능한 한 자신이 실행될 컨텍스트에 대한 구체적인 정보가 적으면 적을수록 더 다양한 컨텍스트에서 재사용될 수 있기 떄문에 설계가 유연해지고 변경에 탄력적으로 대응할 수 있다.
+
+### 의존성 해결하기
+컴파일타임 의존성을 실행 컨텍스트에 맞는 적절한 런타임 의존성으로 교체하는 것을 `의존성 해결`이라고 부르며 의존성을 해결하기 위해서 일반적으로 세 가지 방법을 사용한다.
+* 객체를 생성하는 시점에 생성자를 통해 의존성 해결
+* 객체 생성 후 setter 메서드를 통해 의존성 해결
+* 메서드 실행 시 인자를 이용해 의존성 해결
+
+#### 1. 객체를 생성하는 시점에 생성자를 통해 의존성 해결
+* 객체를 생성할 때 인스턴스를 생성자에 인자로 전달하면 된다.
+* 인스턴스 모두를 선택적으로 전달 받을 수 있도록 부모 클래스 타입의 인자를 받는 생성자를 정의한다.
+```
+Movie avatar = new Movie("아바타", 120, 10000, new AmountDiscountPolicy(...));
+Movie starWars = new Movie("스타워즈", 180, 11000, new PercentDiscountPlicy(...));
+```
+```
+public class Movie {
+  public Movie(String title, Duration runningTime, Money fee, DiscountPolicy discountPolicy) {
+    ...
+    this.discountPolicy = discountPolicy; 
+  }
+}
+```
+
+#### 2. 객체 생성 후 setter 메서드를 통해 의존성 해결
+* 인스턴스를 생성한 후에 메서드를 이용해서 해결할 수도 있다.
+* setter를 이용하면 객체를 생성한 이후에도 의존하고 있는 대상을 변경하고 싶을 때 유용하다.
+* 하지만 객체가 새성된 후 협력에 필요한 의존 대상을 설정하기 때문에 설정하기 전까지는 객체의 상태가 불완전할 수 있다.
+```
+Movie avatar = new Movie(...);
+avatar.setDiscountPolicy(new AmountDIscountPlicy(...));
+```
+```
+public class Movie {
+  ...
+  public void setDiscountPolicy(DiscountPolicy discountPolicy) {
+    this.discountPolicy = discountPolicy;
+  }
+}
+```
+* 생성자와 setter 메서드 방식을 혼합해서 사용하면 안정적이면서도 유연하게 설계할 수 있기 때문에 의존성 해결을 위해 가장 선호되는 방법이다.
+```
+Movie avatar = new Movie(..., new PercentDiscountPlicy(...));
+...
+avatar.setDiscountPolicy(new AmountDIscountPlicy(...));
+```
+
+#### 3. 메서드 실행 시 인자를 이용해 의존성 해결
