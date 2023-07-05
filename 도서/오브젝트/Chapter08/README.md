@@ -232,3 +232,223 @@ public class Movie {
 * 숨겨진 의존성
   * 객체 내부에서 의존하는 객체의 인스턴스를 직접 생성하는 방식은 의존성을 감춘다.
 
+의존성이 명시적이지 않으면 내부 구현을 직접 살펴볼 수밖에 없고 커다란 클래스의 정의된 긴 메서드 내부 어딘가에서 인스턴스를 생성하는 코드를 파악하는 것은 어렵다. `의존성이 명시적이지 않으면 클래스를 다른 컨텍스트에서 재사용하기 위해 내부 구현을 직접 변경`해야 한다.
+
+> 의존성은 명시적으로 표현돼야 퍼블릭 인터페이스를 통해 컴파일타임 의존성을 적절한 런타임 의존성으로 교체할 수 있다.
+
+### new는 해롭다
+클래스의 인스턴스를 생성하는 new 연산자를 잘못 사용하면 클래스 사이의 결합도가 극단적으로 높아진다.
+* new 연산자를 사용하기 위해서는 구체 클래스의 이름을 직접 기술해야 한다. 따라서 new를 사용하는 클라이언트는 추상화가 아닌 구체 클래스에 의존할 수밖에 없어진다.
+* new 연산자는 생성하려는 구체 클래스뿐만 아니라 어떤 인자를 이용해 클래스의 생성자를 호출해야 하는지도 알아야 한다. 따라서 클라이언트가 알아야 하는 지식의 양이 늘어나게 된다.
+
+인스턴스를 직접 생성하는 Movie를 살펴보면 Movie는 AmountDiscountPolicy의 생성자에 전달되는 인자를 알고 있어야 하고 AmountDiscountPolicy의 생성자에서 잠조하는 SequenceCondition과 PeriodCondition에도 의존하게 만든다.
+```
+public class Movie {
+  ...
+  private discountPolicy: DiscountPolicy;
+
+  public Movie((String title, Duration runningTime, Money fee) {
+    ...
+    this.discountPolicy = new AmountDiscountPolicy(Money.wons(800),
+      new SequenceCondition(1),
+      new SequenceCondition(10),
+      new PeriodCondition(DayOfWeek.MONDAY, LocalTime.of(10, 0), LocalTime.of(11, 59)),
+      new PeriodCondition(DayOfWeek.THURDAY, LocalTime.of(10, 0), LocalTime.of(20, 59)));
+  }
+}
+```
+
+결합도가 높으면 변경에 의해 영향을 받기 쉬워지는데 생성자의 인자 목록이나 순서를 바꾸는 경우에도 함께 변경될 수 있고 구체적인 클래스의 변경에도 영향을 받을 수 있다. 더 많은 것에 의존할수록 점점 더 변경에 취약해지기 때문에 높은 결합도를 피해야 한다.
+
+<img src="./image/그림%208.8.png">
+
+Movie가 DiscountPolicy에 의존하는 이유는 calculateDiscountAmount 메시지를 전송하기 위해서다. 이 메시지에 대한 의존성 외의 모든 다른 의존성은 불필요하다. 그렇기 때문에 인스턴스를 생성하는 로직과 생성된 인스턴스를 사용하는 로직을 분리해서 Movie 클래스에는 AmountDiscountPolicy의 인스턴스에 메시지를 전송하는 코드만 남아야 한다.
+```
+public class Movie {
+  ...
+  private discountPolicy: DiscountPolicy;
+
+  public Movie((String title, Duration runningTime, Money fee, DiscountPolicy discountPolicy) {
+    ...
+    this.discountPolicy = discountPolicy;
+  }
+}
+```
+```
+-- AmountDiscountPolicy의 인스턴스를 생성하는 책임은 Movie의 클라이언트로 옮겨져야 한다.
+Movie avatar = new Movie("아바타", 
+  Duration.ofMinutes(120), Money.wons(10000),
+  new AmountDiscountPolicy(Money.wons(800),
+    new SequenceCondition(1),
+    new Sequencecondition(10),
+    new PeriodCondition(DayOfWeek.MONDAY,
+      LocalTime.of(10, 0), 
+      LocalTime.of(11, 59)),
+    new Periodcondition(DayOfWeek.THURSDAY,
+      LocalTime.of(10, 0), 
+      LocalTime.of(20, 59))));
+```
+생성의 책임을 클라이언트로 옮김으로써 Movie는 DiscountPolicy의 모든 자식 클래스와 혐력할 수 있게 됐다. 사용과 생성의 책임을 분리하고, 의존성을 생성자에 명시적으로 드러내고, 구체 클래스가 아닌 추상 클래스에 의존하게 만들면 설계가 유연해진다.
+
+> 출발은 객체를 생성하는 책임을 객체 내부가 아니라 클라이언트로 옮기는 것에서 시작했다는 점으로 올바른 객체가 올바른 책임을 수행하게 하는 것이 훌륭한 설계를 창조하는 기반이라는 사실이다.
+
+### 가끔은 생성해도 무방하다
+`협력하는 기본 객체를 설정하고 싶은 경우에는 클래스 안에서 객체의 인스턴스를 직접 생성하는 방식이 유용한 경우`이다.
+
+Movie가 대부분의 경우에는 AmountDiscountPolicy와 협력하고 가끔씩만 PercentDiscountPolicy와 협력한다고 가정한다면 이런 상황에서 모든 경우에 인스턴스를 생성하는 책임을 클라이언트로 옮긴다면 클라이언트들 사이에 중복 코드가 늘어날 것이다.
+
+이럴 경우 AmountDiscountPolicy를 생성하는 생성자와 DiscountPolicy의 인스턴스를 인자로 받는 생성자를 체이닝할 수 있다.
+* 첫 번째 생성자의 내부에서 두 번째 생성자를 호출함으로써 생성자가 체인처럼 연결된다.
+* 클라이언트는 AmountDiscountPolicy와 협력하면서도 컨텍스트에 적절한 DiscountPolicy로 의존성을 교체할 수 있다.
+```
+public class Movie {
+  ...
+  private DiscountPolicy discountPolicy;
+
+  public Movie(String title, Duration runningTime) { 
+    this(title, runningTime, new AmountDiscountPolicy(...));
+  }
+
+  public Movie(String title, Duration runningTime, Money fee, DiscountPolicy discountPolicy) {
+    ...
+    this.discountPolicy = discountPolicy;
+  }
+}
+```
+
+메서드를 오버로딩하는 경우에도 사용할 수 있다.
+* DiscountPolicy의 인스턴스를 인자로 받는 메서드와 기본 값을 생성하는 메서드를 함께 사용하면 클래스의 사용성을 향상시키면서도 다양한 컨텍스트에서 유연하게 사용될 수 있는 여지를 제공한다.
+```
+public class Movie {
+  public Money calculateMovieFee(Screening screening) {
+    return calculateMovieFee(screening, new AmountDiscountPolicy(...)); 
+  }
+
+  public Money calculateMovieFee(Screening screening, DiscountPolicy discountPolicy) {
+    return fee.minus(discountPolicy.calculateDiscountAmount(screening));
+  }
+}
+```
+
+> 설계는 트레이드오프 활동이라는 사실로 여기서 트레이드오프의 대상은 결합도와 사용성이다. 구체 클래스에 의존하게 되더라도 클래스의 사용성이 더 중요하다면 결합도를 높이는 방향으로 코드를 작성할 수 있다. 그럼에도 가급적 구체 클래스에 대한 의존성을 제거할 수 있는 방법을 찾는 것이 좋다.
+
+### 표준 클래스에 대한 의존은 해롭지 않다.
+* 의존성이 불편한 이유는 항상 변경에 대한 영향을 암시하기 때문이지 변경될 확률이 거의 없는 클래스라면 의존성이 문제되지 않는다.
+* 예를 들어 JDK의 표준 컬렉션 라이브러리에 속하는 ArrayList의 코드가 수정될 확률은 0에 가깝기 때문에 인스턴스를 직접 생성해도 문제가 되지 않는다.
+  ```
+  public abstract class DiscountPolicy {
+    private List<DiscountCondition> conditions = new ArrayList<>();
+  }
+  ```
+* 가능한 한 추상적인 타입을 사용하는 것이 확장성 측면에서 유리한데 다양한 List 타입의 객체로 대체할 수 있게 설계의 유연성을 높일 수 있다.
+  ```
+  public abstract class DiscountPolicy {
+    private List<DiscountCondition> conditions = new ArrayList<>();
+
+    public void switchconditions(List<DiscountCondition> conditions) {
+      this.conditions = conditions;
+    }
+  }
+  ```
+* 의존성에 의한 영향이 적은 경우에도 추상화에 의존하고 의존성을 명시적으로 드러내는 것은 좋은 설계 습관이다.
+
+### 컨텍스트 확장하기
+Movie가 유연하다는 사실을 입증하기 위해서 Movie를 확장해서 재사용하는 두 가지 예를 살펴본다.
+
+1. 할인 혜택을 제공하지 않는 영화의 예매 요금 계산
+```
+public class Movie {
+  public Movie(String title, Duration runningTime, Money fee) {
+    this(title, runningTime, fee, null); 
+  }
+
+  public Movie(String title, Duration runningTime, Money fee, DiscountPolicy discountPolicy) {
+    ...
+    this.discountPolicy = discountPolicy; 
+  }
+
+  public Money calculateMovieFee(Screening screening) { 
+    if (discountPolicy == null) {
+      return fee; 
+    }
+    
+    return fee.minus(discountPolicy.calculateDiscountAmount(screening)); 
+  }
+}
+```
+생성자 체이닝 기법을 이용해 null을 할당하고 있는데 제대로 동작하지만 문제가 발생한다. 지금까지의 Movie와 DiscountPolicy 사이의 협력 방식에 어긋나는 예외 케이스가 추가된 것으로 이 예외 케이스를 처리하기 위해 Movie 내부를 직접 수정했다. 어떤 경우든 코드 내부를 직접 수정하는 것은 버그 발생률을 높인다.
+
+해결 방법은 할인 정책이 존재하지 않는다는 사실을 예외 케이스로 처리하지 말고 기존 협력 방식을 따르도록 만들면 되는데 NoneDiscountPolicy 클래스를 추가하고 DiscountPolicy의 자식 클래스로 만들면 된다. NoneDiscountPolicy의 인스턴스를 Movie 생성자에 전달함으로써 해결할 수 있다.
+```
+public class NoneDiscountPolicy extends DiscountPolicy { 
+  @Override
+  protected Money getDiscountAmount(Screening Screening) {
+    return Money.ZERO; 
+  }
+}
+```
+```
+-- if 문을 추가하지 않아도 할인 혜택을 제공하는 영화를 구현했다.
+Movie avatar = new Movie("아바타", 
+  Duration.ofMinutes(120), 
+  Money.wons(10000),
+  new NoneDiscountPolicy());
+```
+
+2. 중복 적용이 가능한 할인 정책 구현
+* Movie가 하나 이상의 DiscountPolicy와 협력할 수 있어야 한다. 가장 간단한 방법은 Movie가 DiscountPolicy의 인스턴스들로 구성된 List를 인스턴스 변수로 갖는 것이지만, 이 방법 또한 기존의 할인 정책의 협력 방식과는 다른 예외 케이스를 추가하게 만든다.
+* 중복 할인 정책 또한 할인 정책의 한 가지로 간주해서 OverlappedDiscountPolicy를 DiscountPolicy의 자식 클래스로 만들면 된다.
+```
+public class OverlappedDiscountPolicy extends DiscountPolicy { 
+  private List<DiscountPolicy> discountpolicies = new ArrayList<>();
+
+  public OverlappedDiscountPolicy(DiscountPolicy ... discountPolicies) { 
+    this.discountpolicies = Arrays.asList(discountPolicies);
+  }
+
+  @Override
+  protected Money getDiscountAmount(Screening screening) {
+    Money result = Money.ZERO;
+    for(DiscountPolicy each : discountPolicies) {
+      result = result.plus(each.calculateDiscountAmount(screening)); 
+    }
+    return result;
+  }
+}
+```
+```
+-- OverlappedDiscountPolicy의 인스턴스를 생성해서 전달하는 것만으로 중복할인을 쉽게 적용한다.
+Movie avatar = new Movie(
+  "아바타", 
+  Duration.ofMinutes(120), 
+  Money.wons(10000),
+  new OverlappedDiscountPolicy(
+    new AmountDiscountPolicy(...),
+    new PercentDiscountPolicy(...)));
+```
+
+원하는 기능을 구현한 DiscountPolicy의 자식 클래스를 추가하고 이 클래스의 인스턴스를 Movie에 전달하기만 하면 된다. Movie가 협력해야 하는 객체를 변경하는 것만 으로도 Movie를 새로운 컨텍스트에서 재사용할 수 있기 때문에 Movie는 유연하고 재사용 가능하다.
+
+설계를 유연하게 만든 이유는 아래와 같다.
+* Movie는 DiscountPolicy라는 추상화에 의존했다.
+* 생성자를 통해 DiscountPolicy에 대한 의존성을 명시적으로 드러냈다.
+* new와 같이 구체 클래스를 직접적으로 다뤄야 하는 책임을 Movie 외부로 옮겼다.
+
+> 결합도를 낮춤으로써 얻게 되는 컨텍스트의 확장이라는 개념이 유연하고 재사용 가능한 설계를 만드는 핵심이다.
+
+### 조합 가능한 행동
+* 다양한 종류의 할인 정책이 필요한 컨텍스트에서 Movie를 재사용할 수 있었던 이유는 코드를 직접 수정 하지 않고도 협력 대상인 DiscountPolicy 인스턴스를 교체할 수 있었기 때문이다. 어떤 DiscountPolicy의 인스턴스를 Movie에 연결하느냐에 따라 Movie의 행동이 달라진다. 
+* 어떤 객체와 협력하느냐에 따라 객체의 행동이 달라지는 것은 유연하고 재사용 가능한 설계가 가진 특징으로 체들을 다양한 방식으로 연 결함으로써 애플리케이션의 기능을 쉽게 확장할 수 있다.
+* 유연하고 재사용 가능한 설계는 객체의 how를 장황하게 나열하지 않고도 객체들의 조합을 통해 what을 표현하는 클래스들로 구성된다. 따라서 클래스의 인스턴스를 생성하는 코드를 보는 것만으로 객체가 어떤 일을 하는지를 쉽게 파악할 수 있고 선언적으로 객체의 행동을 정의할 수 있는 것이다.
+  ```
+  new Movie("아바타",
+    Duration.ofMinutes(120),
+    Money.wons(10000),
+    new AmountDiscountPolicy(Money.wons(800),
+      new SequenceCondition(1),
+      new Sequencecondition(10),
+      new PeriodCondition(DayOfWeek.MONDAY, LocalTime.of(10, 0), LocalTime.of(12, 0)),
+      new PeriodCondition(DayOfWeek.THURSDAY, LocalTime.of(10, 0), LocalTime.of(21, 0))));
+  ```
+
+> 훌륭한 객체지향 설계란 객체가 어떻게 하는지를 표현하는 것이 아니라 객체들의 조합을 선언 적으로 표현함으로써 객체들이 무엇을 하는지를 표현하는 설계다. 이런 설계를 창조하는 데 있어서의 핵심은 의존성을 관리하는 것이다.
