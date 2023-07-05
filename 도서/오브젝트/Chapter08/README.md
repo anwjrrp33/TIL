@@ -200,6 +200,35 @@ public class Movie {
   * 내부 구현과 자식 클래스의 종류에 대한 지식을 클라이언트에게 숨길 수 있어서 구체 클래스보다 결합도가 낮다.
   * 클라이언트는 여전히 협력하는 대상이 속한 클래스 상속 계층이 무엇인지에 대해서는 알아야 한다.
 * 인터페이스 의존성
-  * 
+  * 인터페이스에 의존하면 상속 계층을 몰라도 협력이 가능해진다.
+  * 협력 객체가 어떤 메시지를 수신할 수 있는지에 대한 지식만 남기기 때문에 추상 클래스 의존성보다 결합도가 낮다.
+
+중요한 것은 실행 컨텍스트에 대해 알아야 하는 정보를 줄일수록 결합도가 낮아진다는 것으로 결합도를 느슨하게 만들려면 구체적인 클래스 < 추상 클래스 < 인터페이스 순으로 의존하는 것이 효과적이다.
+
+> 의존하는 대상이 더 추상적일수록 결합도는 더 낮아진다.
 
 ### 명시적인 의존성
+* 느슨한 결합도를 위해서는 인스턴스 변수의 타입을 추상 클래스나 인터페이스로 선언하고 클래스 안에서 구체 클래스에 대한 모든 의존성을 제거해야 한다.
+* 인스턴스 변수의 타입은 추상 클래스나 인터페이스로 정의하고 setter 메서드와 메서드 인자로 의존성을 해결할 때는 추상 클래스를 상속받거나 구체 클래스를 전달하면 된다.
+```
+public class Movie {
+  ...
+  private DiscountPolicy discountPolicy;
+
+  public Movie(String title, Duration runningTime, Money fee) {
+    ...
+    this.discountPolicy = new AmountDiscountPolicy(...); // 잘못된 경우
+  }
+
+  public Movie(String title, Duration runningTime, Money fee, DiscountPolicy discountPolicy) {
+    ...
+    this.discountPolicy = discountPolicy; // 올바른 경우
+  }
+}
+```
+
+* 명시적인 의존성
+  * 생성자의 인자로 선언하거나 setter 메서드 또는 메서드 인자를 사용하는 방법은 의존성이 퍼블릭 인터페이스에 노출된다.
+* 숨겨진 의존성
+  * 객체 내부에서 의존하는 객체의 인스턴스를 직접 생성하는 방식은 의존성을 감춘다.
+
