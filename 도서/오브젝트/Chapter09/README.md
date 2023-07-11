@@ -118,7 +118,39 @@ public class Client {
 > Movie의 의존성을 추상화인 DiscountPolicy로만 제한하기 때문에 확장에 대해서는 열려 있으면서도 수정에 대해서는 닫혀 있는 코드를 만들 수 있는 것이다.
 
 ### FACTORY 추가하기
+생성 책임을 Client로 옮긴 배경에는 Movie는 특정 컨텍스트에 묶여서는 안 되지만 Client는 묶여도 상관 없다는 전제가 깔려 있지만 Client도 특정한 컨텍스트에 묶이지 않는다고 가정해본다.
 
+Client는 Movie의 인스턴스를 생성하는 동시에 getFee 메시지도 함께 전송한다. 이는 생성과 사용의 책임을 함께 지니고 있는 것이고 Movie의 문제를 해결했던 것처럼 Movie를 생성하는 책임을 Client의 인스턴스를 사용할 문맥을 결정할 클라이언트로 옮기지만 객체 생성과 관련된 지식이 Client와 협력하는 클라이언트에게까지 새어나가기를 원하지 않는다.
+
+객체 생성과 관련된 책임만 전담하는 별도의 객체를 추가하고 Client는 이 객체를 사용하도록 만드는데 이처럼 `생성과 사용을 분리하기 위해 객체 생성에 특화된 객체`를 `FACTORY`라고 부른다.
+```
+public class Factory {
+    public Movie createAvatarMovie() {
+        return new Movie("아바타", 
+            Duration.ofMinutes(120),
+            Money.wons(10000),
+            new AmountDiscountPolicy(...));
+    }
+}
+```
+```
+-- Client는 Factory를 사용해서 생성된 Movie의 인스턴스를 반환받아 사용하기만 하면 된다
+public class Client {
+    private Factory factory;
+
+    public Client(Factory factory) { 
+        this.factory = factory;
+    }
+
+    public Money getAvatarFee() {
+        Movie avatar = factory.createMadMaxMovie(); 
+        return avatar.getFee();
+    } 
+}
+```
+
+FACTORY를 사용하면 Movie와 AmountDiscountPolicy를 생성하는 책임 모두를 FACTORY로 옮길 수 있다. Client는 오직 사용과 관련된 책임만 지고 생성과 관련된 어떤 지식도 가지지 않을 수 있다.
+
+<img src="./image/%EA%B7%B8%EB%A6%BC%209.6.png">
 
 ### 순수한 가공물에게 책임 할당하기
-
