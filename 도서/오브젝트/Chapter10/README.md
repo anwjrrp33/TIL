@@ -81,7 +81,7 @@ public class Phone {
 #### 심야 할인 요금제
 전화 요금 계산 애플리케이션이 성공적으로 출시하고 심야 할인 요금제라는 새로운 요금 방식을 추가해야 한다고 요구사항이 접수됐다.
 * Phone에 구현된 기존 요금제는 일반 요금제로 부른다.
-* 구사항을 해결하는 가장 쉽고 빠른 방법은 Phone의 코드를 복사해서 NightlyDiscountPhone라는 새로운 클래스를 만든 후 수정하는 것이다.
+* 요구사항을 해결하는 가장 쉽고 빠른 방법은 Phone의 코드를 복사해서 NightlyDiscountPhone라는 새로운 클래스를 만든 후 수정하는 것이다.
 ```
 public class NightlyDiscountPhone {
     private static final int LATE_NIGHT_HOUR = 22;
