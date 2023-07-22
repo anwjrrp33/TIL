@@ -141,3 +141,25 @@ public class InstrumentedHashSet<E> implements Set<E> {
 * Set의 오퍼레이션을 오버라이딩한 인스턴스 메서드에서 내부의 HashSet 인스턴스에게 동일한 메서드 호출을 그대로 전달한다.
 * 이를 `포워딩`이라 하고, 동일한 메서드를 호출하기 위해 추가된 메서드를 `포워딩 메서드`라고 한다.
 * 기존 클래스의 인터페이스를 그대로 외부에 제공하면서 구현에 대한 결합 없이 일부 작동 방식을 변경할 수 있다.
+
+### 부모 클래스와 자식 클래스의 동시 수정 문제: PersonalPlaylist
+Playlist의 경우에는 합성으로 변경하더라도 PersonalPlaylist를 함께 수정해야 하는 문제가 해결되지는 않는다.
+```
+public class PersonalPlaylist {
+    private Playlist playlist = new Playlist()；
+    
+    public void append(Song song)  { 
+        playlist.append(song)；
+    }
+
+    public void remove(Song song)  { 
+        playlist.getTracks().remove(song)；
+        playlist.getSingers().remove(song.getSinger());
+    }   
+}
+```
+
+그래도 향후 Playlist의 내부 구현에 대한 변경의 파급효과를 최대한 PersonalPlaylist 내부로 캡슐화할 수 있기 때문에, 상속보다는 합성을 사용하는 게 좋고 대부분의 경우 구현에 대한 결합보다는 인터페이스에 대한 결합이 더 좋다.
+
+
+## 02. 상속으로 인한 조합의 폭발적인 증가
