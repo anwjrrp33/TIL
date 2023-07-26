@@ -244,9 +244,30 @@ public class NightlyDiscountPhone extends Phone {
     protected Money calculateCallFee(Call call) {
         if (call.getFrom().getHour() >= LATE_NIGHT_HOUR) {
             return nightlyAmount.times(call.getDuration().getSeconds() / seconds.getSeconds());
-        } else {
-            return regularAmount.times(call.getDuration().getSeconds() / seconds.getSeconds());
         }
+        return regularAmount.times(call.getDuration().getSeconds() / seconds.getSeconds());
+    }
+}
+```
+* RegularPhone과 NightlyDiscountPhone의 인스턴스만 단독으로 생성한다는 것은 부가 정책은 적용하지 않고 오직 기본 정책으로 요금을 계산한다는 것을 의미한다.
+
+### 기본 정책에 세금 정책 조합하기
+일반 요금제에 세금 정책을 조합해야 한다.
+* 일반 요금제에 세금 정책을 조합해야 할 때, 가장 간단한 방법은 RegularPhone을 상속받은 TaxableRegularPhone을 추가하는 것이다.
+```
+public class TaxableRegularPhone extends RegularPhone {
+    private double taxRate;
+
+    public TaxableRegularPhone(Money amount, Duration seconds,
+                               double taxRate) {
+        super(amount, seconds);
+        this.taxRate = taxRate;
+    }
+
+    @Override
+    public Money calculateFee() {
+        Money fee = super.calculateFee();
+        return fee.plus(fee.times(taxRate));
     }
 }
 ```
