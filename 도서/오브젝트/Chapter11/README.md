@@ -271,3 +271,27 @@ public class TaxableRegularPhone extends RegularPhone {
     }
 }
 ```
+부모 클래스의 메서드를 재사용하기 위해 super 호출을 사용하면 결과를 얻을 순 있지만 결합도가 높아진다.
+* 결합도를 낮추는 방법은 부모 클래스에 추상 메서드를 제공하는 것이다.
+* 그러면 자식 클래스는 부모 클래스의 구체적인 구현이 아닌 추상화에 의존하게 된다.
+
+Phone에 추상 메서드 afterCalculated를 추가한다. 
+* 이는 전체 요금을 계산한 후에 수행할 로직을 추가할 수 있게 해준다.
+```
+public abstract class Phone {
+    private List<Call> calls = new ArrayList<>();
+
+    public Money calculateFee() {
+        Money result = Money.ZERO;
+
+        for(Call call : calls) {
+            result = result.plus(calculateCallFee(call));
+        }
+
+        return afterCalculated(result);
+    }
+
+    protected abstract Money calculateCallFee(Call call);
+    protected abstract Money afterCalculated(Money fee);
+}
+```
