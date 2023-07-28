@@ -295,3 +295,25 @@ public abstract class Phone {
     protected abstract Money afterCalculated(Money fee);
 }
 ```
+```
+public class RegularPhone extends Phone {
+    ...
+    @Override
+    protected Money afterCalculated(Money fee) {
+        return fee;
+    }
+}
+```
+```
+public class NightlyDiscountPhone extends Phone {
+    ...
+    @Override
+    protected Money afterCalculated(Money fee) {
+        return fee;
+    }
+}
+```
+부모 클래스에 추상 메서드를 추가하면 모든 자식 클래스들이 추상 메서드를 오버라이딩해야 하는 문제가 발생한다.
+
+모든 추상 메서드의 구현도 동일하다. 그럼 Phone에서 afterCalculated에 대한 기본 구현을 함께 제공하도록 해본다.
+
