@@ -317,3 +317,56 @@ public class NightlyDiscountPhone extends Phone {
 
 모든 추상 메서드의 구현도 동일하다. 그럼 Phone에서 afterCalculated에 대한 기본 구현을 함께 제공하도록 해본다.
 
+```
+public abstract class Phone {
+    ...
+    protected Money afterCalculated(Money fee) { 
+        return fee;
+    }
+    
+    protected abstract Money calculateCallFee(Call call); 
+}
+```
+이처럼 기본 구현을 제공하는 메서드를 훅 메서드라고 한다.
+* 추상 메서드와 동일하게 자식 클래스에서 오버라이딩할 의도로 메서드를 추가했지만 편의를 위해 기본 구현을 제공한다.
+
+나머지 코드도 수정한다
+* TaxableRegularPhone
+* TaxableNightlyDiscountPhone
+```
+public class TaxableRegularPhone extends RegularPhone {
+    private double taxRate;
+
+    public TaxableRegularPhone(Money amount, Duration seconds, double taxRate) {
+        super(amount, seconds);
+        this.taxRate = taxRate;
+    }
+
+    @Override
+    protected Money afterCalculated(Money fee) {
+        return fee.plus(fee.times(taxRate));
+    }
+}
+```
+```
+public class TaxableNightlyDiscountPhone extends NightlyDiscountPhone {
+    private double taxRate;
+
+    public TaxableNightlyDiscountPhone(Money nightlyAmount, Money regularAmount, Duration seconds, double taxRate) {
+        super(nightlyAmount, regularAmount, seconds);
+        this.taxRate = taxRate;
+    }
+
+    @Override
+    protected Money afterCalculated(Money fee) {
+        return fee.plus(fee.times(taxRate));
+    }
+}
+```
+
+<img src="./image/그림%2011.3.png">
+
+이제 조합에 따라 원하는 인스턴스를 생성하면 된다. 하지만 문제는 TaxableNightlyDiscountPhone과 TaxableRegularPhone 사이에 코드를 중복했다는 것이다. 대부분의 객체지향 언어는 단일 상속만 지원하기 때문에 상속으로 인해 발생하는 중복 코드 문제를 해결하기 쉽지 않다.
+
+### 기본 정책에 기본 요금 할인 정책 조합하기
+기본 요금 할인 정책을 Phone의 상속 계층에 추가해본다.
