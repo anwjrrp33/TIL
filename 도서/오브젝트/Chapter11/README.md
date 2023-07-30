@@ -370,3 +370,55 @@ public class TaxableNightlyDiscountPhone extends NightlyDiscountPhone {
 
 ### 기본 정책에 기본 요금 할인 정책 조합하기
 기본 요금 할인 정책을 Phone의 상속 계층에 추가해본다.
+```
+public class RateDiscountableRegularPhone extends RegularPhone {
+    private Money discountAmount;
+
+    public RateDiscountableRegularPhone(Money amount, Duration seconds, Money discountAmount) {
+        super(amount, seconds);
+        this.discountAmount = discountAmount;
+    }
+
+    @Override
+    protected Money afterCalculated(Money fee) {
+        return fee.minus(discountAmount);
+    }
+}
+```
+```
+public class RateDiscountableNightlyDiscountPhone extends NightlyDiscountPhone {
+    private Money discountAmount;
+
+    public RateDiscountableNightlyDiscountPhone(Money nightlyAmount,
+                                                Money regularAmount, Duration seconds, Money discountAmount) {
+        super(nightlyAmount, regularAmount, seconds);
+        this.discountAmount = discountAmount;
+    }
+
+    @Override
+    protected Money afterCalculated(Money fee) {
+        return fee.minus(discountAmount);
+    }
+}
+```
+
+어떤 클래스를 선택하느냐에 따라 적용하는 요금제의 조합이 결정된다. 하지만 이번에도 두 클래스 사이에는 중복 코드가 존재한다.
+
+<img src="./image/그림%2011.4.png">
+
+### 중복 코드의 덫에 걸리다
+자유롭게 조합할 수 있어야하고, 순서 역시 임의로 결정할 수 있다.
+* 표준 요금제에 기본 할인 정책을 적용한 후 세금을 나중에 부과하고 싶으면 RateDiscountableAndTaxableRegularPhone 클래스를 추가한다.
+* 계산 결과에 세금 정책을 적 용한 후 기본 요금 할인 정책을 적용하는 케이스 TaxableAndDiscountableNightlyDiscountPhone 구현한다.
+
+<img src="./image/그림%2011.6.png">
+
+#### 문제점
+* 상속을 이용한 해결 방법은 모든 가능한 조합별로 자식 클래스를 추가하는 것이다.
+* 새로운 정책을 추가하기 위해서는 불필요하게 많은 수의 클래스를 상속 계층 안에 추가해야 한다.
+* 상속의 남용으로 하나의 기능을 추가하기 위해 필요 이상으로 많은 수의 클래스를 추가하는 걸 클래스 폭발/조합의 폭발 문제라고 부른다.
+* 클래스 폭발 문제는 자식 클래스가 부모 클래스의 구현에 강하게 결합되도록 강요하는 상속의 근본적인 한계로 발생한다.
+* 클래스 폭발 문제는 새로운 기능 추가 뿐만 아니라 수정 시에도 문제가 된다.
+
+## 03. 합성 관계로 변경하기
+
