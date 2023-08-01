@@ -438,3 +438,72 @@ public class RateDiscountableNightlyDiscountPhone extends NightlyDiscountPhone {
 각 정책을 별도의 클래스로 구현한다.
 * 기본 정책과 부가 정책을 포괄하는 인터페이스 추가
 * 기본 정책을 구성하는 일반 요금제와 심야 할인 요금제의 중복 코드를 담을 추상 클래스를 추가
+* Phone 수정
+```
+public interface RatePolicy {
+    Money calculateFee(Phone phone);
+}
+```
+```
+public abstract class BasicRatePolicy implements RatePolicy {
+    @Override
+    public Money calculateFee(Phone phone) {
+        Money result = Money.ZERO;
+
+        for(Call call : phone.getCalls()) {
+            result.plus(calculateCallFee(call));
+        }
+
+        return result;
+    }
+
+    protected abstract Money calculateCallFee(Call call);
+}
+
+public class RegularPolicy extends BasicRatePolicy {
+    private Money amount;
+    private Duration seconds;
+
+    public RegularPolicy(Money amount, Duration seconds) {
+        this.amount = amount;
+        this.seconds = seconds;
+    }
+
+    @Override
+    protected Money calculateCallFee(Call call) {
+        return amount.times(call.getDuration().getSeconds() / seconds.getSeconds());
+    }
+}
+```
+```
+public class Phone {
+    private RatePolicy ratePolicy;
+    private List<Call> calls = new ArrayList<>();
+
+    public Phone(RatePolicy ratePolicy) {
+        this.ratePolicy = ratePolicy;
+    }
+
+    public List<Call> getCalls() {
+        return Collections.unmodifiableList(calls);
+    }
+
+    public Money calculateFee() {
+        return ratePolicy.calculateFee(this);
+    }
+}
+```
+* Phone 내부에 RatePolicy에 대한 참조자가 포함돼 있다. 이것이 바로 합성이다.
+* Phone은 생성자를 통해 RatePolicy의 인스턴스에 대한 의존성을 주입받는다.
+* 다양한 종류의 객체와 협력하기 위해 합성을 사용하는 경우, 합성하는 객체의 타입을 인터페이스나 추상 클래스로 선언하고 의존성 주입으로 런타임에 필요한 객체를 설정할 수 있도록 구현하는 것이 일반적이다.
+
+<img src="./image/그림%2011.7.png">
+
+```
+Phone phone = new Phone(new RegularPolicy(Money.wons(10)z Duration.ofSeconds(10)));
+Phone phone = new Phone(new NightlyDiscountPolicy(Money.wons(5), Money.wons(10), Duration.ofSeconds(10)));
+```
+컴파일 시점의 Phone 클래스와 RatePolicy 인터페이스 사이의 관계가 런타임에 Phone 인스턴스와 RegularPolicy 인스턴스 사이의 관계로 대체됐다.
+* 현재의 설계에 부가 정책을 추가해 보면 합성의 강력함을 실감할 수 있다.
+
+### 부가 정책 적용하기
