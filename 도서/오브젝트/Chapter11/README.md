@@ -507,3 +507,82 @@ Phone phone = new Phone(new NightlyDiscountPolicy(Money.wons(5), Money.wons(10),
 * 현재의 설계에 부가 정책을 추가해 보면 합성의 강력함을 실감할 수 있다.
 
 ### 부가 정책 적용하기
+부가 정책은 기본 정책에 대한 계산이 끝난 후에 적용되므로 두 가지 제약이 존재한다.
+* 부가 정책은 기본 정책이나 다른 부가 정책의 인스턴스를 참조할 수 있어야 한다. 부가 정책의 인스턴스는 어떤 종류의 정책과도 합성될 수 있어야 한다.
+* Phone의 입장에서는 메시지를 전송하는 대상이 기본 정책의 인스턴스인지 부가 정책의 인스턴스인지 몰라야 한다. 기본 정책과 부가 정책은 협력 안에서 동일한 '역할'을 수행해야 한다. 즉, 동일한 RatePolicy 인터페이스를 구현해야 한다.
+
+부가 정책은 RatePolicy 인터페이스를 구현해야 하며, 내부에 또 다른 RatePolicy 인스턴스를 합성할 수 있어야 한다.
+```
+public abstract class AdditionalRatePolicy implements RatePolicy {
+    private RatePolicy next;
+
+    public AdditionalRatePolicy(RatePolicy next) {
+        this.next = next;
+    }
+
+    @Override
+    public Money calculateFee(Phone phone) {
+        Money fee = next.calculateFee(phone);
+        return afterCalculated(fee) ;
+    }
+
+    abstract protected Money afterCalculated(Money fee);
+}
+```
+
+AdditionalRatePolicy의 calculateFee는 먼저 next가 참조하는 인스턴스에게 메시지를 전송한 후, 반환된 요금에 부가 정책을 적용하기 위해 afterCalculated 메서드를 호출한다.
+```
+public class TaxablePolicy extends AdditionalRatePolicy {
+    private double taxRatio;
+
+    public TaxablePolicy(double taxRatio, RatePolicy next) {
+        super(next);
+        this.taxRatio = taxRatio;
+    }
+
+    @Override
+    protected Money afterCalculated(Money fee) {
+        return fee.plus(fee.times(taxRatio));
+    }
+}
+
+public class RateDiscountablePolicy extends AdditionalRatePolicy {
+    private Money discountAmount;
+
+    public RateDiscountablePolicy(Money discountAmount, RatePolicy next) {
+        super(next);
+        this.discountAmount = discountAmount;
+    }
+
+    @Override
+    protected Money afterCalculated(Money fee) {
+        return fee.minus(discountAmount);
+    }
+}
+```
+
+<img src="./image/그림%2011.11.png">
+
+### 기본 정책과 부가 정책 합성하기
+```
+-- 일반 요금제, 세금 정책
+Phone phone = new Phone(new TaxablePolicy(0.05, new RegularPolicy(...));
+-- 일반 요금제, 기본 요금 할인 정책
+Phone phone = new Phone(new TaxablePolicy(0.05, new RateDiscountablePolicy(Money.wons(1000), new RegularPolicy(...)));
+-- 세금 정책, 기본 요금 할인 정책 순서 변경
+Phone phone = new Phone(new RateDiscountablePolicy(Money.wons(1000), new TaxablePolicy(0.05, new RegularPolicy(...)));
+-- 심야 할인 요금제에 동일한 정책 적용
+Phone phone = new Phone(new RateDiscountablePolicy(Money.wons(1000), new TaxablePolicy(0.05, new NightlyDiscountPolicy(...)));
+```
+* 객체를 조합하고 사용하는 방식이 상속을 사용한 방식보다 더 예측 가능하고 일관성 있다.
+* 상속의 경우 새로운 부가 정책을 추가하기 위해서는 상속 계층에 불필요할 정도로 많은 클래스를 추가해야 한다.
+* 합성의 경우 새로운 부가 정책 클래스 하나만 추가한 후 원하는 방식으로 조합하면 된다. 
+* 수정 시에도 하나의 클래스만 수정하면 된다. 
+* 합성을 이용한 설계는 단일 책임 원칙을 준수한다.
+
+### 새로운 정책 추가하기
+
+
+### 객체 합성이 클래스 상속보다 더 좋은 방법이다.
+
+## 04. 믹스인
