@@ -611,5 +611,87 @@ Phone phone = new Phone(new RateDiscountablePolicy(Money.wons(1000), new Taxable
 * 기본 정책을 구현하는 클래스는 기본 정책에 속하는 전체 요금제 클래스들이 확장할 수 있도록 추상 클래스로 구현한다.
 * 표준 요금제와 심야 할인 요금제는 기본 정책 요금제를 상속받아 calculateCallFee를 오버라이딩한다.
 ```
+abstract class BasicRatePolicy {
+  def calculateFee(phone: Phone): Integer =
+    phone.getCalls.map(calculateCallFee(_)).reduce(_ + _)
 
+  protected def calculateCallFee(call: Call): Money;
+}
+
+class RegularPolicy(val amount: Integer, val seconds: Integer) extends BasicRatePolicy {
+  override protected def calculateCallFee(call: Call): Money = 
+    amount * (call.getDuration / seconds)
+}
+
+class NightlyDiscountPolicy(
+  val nightlyAmount: Integer,
+  val regularAmount: Integer,
+  val seconds: Integer) extends BasicRatePolicy {
+
+  override protected def calculateCallFee(call: Call): Integer = 
+    if (call.getFrom() >= NightlyDiscountPolicy.LateNightHour) {
+      nightlyAmount * (call.getDuration / seconds);
+    } else {
+      regularAmount * (call.getDuration() / seconds);
+    }
+}
+
+object NightlyDiscountPolicy {
+  val LateNightHour: Integer = 22
+}
 ```
+
+### 트레이트로 부가 정책 구현하기
+부가 정책들을 트레이트로 구현해본다.
+* 차이점은 부가 정책의 코드를 기본 정책 클래스에 섞어 넣을 때 두드러진다.
+* 스칼라에서는 다른 코드와 조합해서 확장할 수 있는 기능을 트레이트로 구현할 수 있다.
+```
+trait TaxablePolicy extends BasicRatePolicy {
+  def taxRate: Double
+
+  override def calculateCallFee(phone: Phone): Integer = {
+    val fee = super.calculateFee(phone)
+    return fee + fee * taxRate
+  }
+}
+
+trait RateDiscountablePolicy extends BasicRatePolicy {
+  val discountAmount: Integer
+
+  override def calculateCallFee(phone: Phone): Integer = {
+    val fee = super.calculateFee(phone)
+    fee - discountAmount
+  }
+}
+```
+
+트레이트는 BasicRatePolicy를 확장한다.
+* 이는 상속의 개념이 아니다.
+* 트레이트가 BasicRatePolicy나 BasicRatePolicy의 자손에 해당하는 경우에만 믹스인될 수 있다는 것을 의미한다.
+
+두 가지 의문이 생긴다.
+* 클래스로 구현했던 상속 계층과 차이점이 거의 없는 것 아닌가?
+  * 트레이트가 BasicRatePolicy를 상속하도록 구현했지만 실제로 BasicRatePolicy의 자식 트레이트가 되는 것은 아니다.
+  * extends 문은 단지 트레이트가 사용될 수 있는 문맥을 제한할 뿐이다.
+  트레이트는 BasicRatePolicy를 상속받은 경우에만 믹스인될 수 있다.
+  * 따라서 BasicRatePolicy와 NightlyDiscountPolicy에 믹스인 될 수 있으며, 미래에 추가될 새로운 BasicRatePolicy의 자손에게도 믹스인될 수 있지만 다른 클래스나 트레이트에는 믹스인될 수 없다.
+* 왜 여기서는 또 super 호출을 사용하는 것인가?
+  * 상속은 정적이지만 믹스인은 동적이다.
+  * 상속은 부모와 자식의 관계를 코드를 작성하는 시점에 고정시켜 버리지만 믹스인은 제약을 둘 뿐 실제로 어떤 코드에 믹스인될 것인지를 결정하지 않는다.
+  * 따라서 super로 참조되는 코드 역시 고정되지 않는다.
+  * super 호출로 실행되는 calculateFee 메서드를 보관한 코드는 실제로 트레이트가 믹스인되는 시점에 결정된다.
+  * RegularPolicy의 메서드가 호출될 수도, NightlyDiscountPolicy의 메서드가 호출될 수도 있다.
+  * 상속의 경우 일반적으로 this 참조는 동적으로 결정되지만 super 참조는 컴파일 시점에 결정된다.
+  * 하지만 스칼라의 트레이트에서 super 참조는 동적으로 결정된다.
+
+> 합성은 독립적으로 작성된 객체들을 실행 시점에 조합해서 더 큰 기능을 만들어내는 데 비해, 믹스인은 독립적으로 작성된 트레이트와 클래스를 코드 작성 시점에 조합해서 더 큰 기능을 만들어낸다.
+
+### 부가 정책 트레이트 믹스인하기
+부모 클래스는 extends를 이용해 상속받고 트레이트는 with를 이용해 믹스인해야 하는데 이를 `트레이트 조합`이라고 한다.
+
+표준 요금제에 세금 정책을 조합해본다. 
+* 믹스인할 트레이트를 TaxablePolicy
+* 조합될 클래스는 RegularPolicy
+
+### 쌓을 수 있는 변경
+
