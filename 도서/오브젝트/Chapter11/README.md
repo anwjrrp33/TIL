@@ -692,6 +692,71 @@ trait RateDiscountablePolicy extends BasicRatePolicy {
 표준 요금제에 세금 정책을 조합해본다. 
 * 믹스인할 트레이트를 TaxablePolicy
 * 조합될 클래스는 RegularPolicy
+```
+class TaxablePolicy(
+  amount: Integer, 
+  seconds: Integer, 
+  val taxRate: Double) 
+extends RegularPolicy(amount, seconds)
+with TaxablePolicy
+```
+스칼라는 특정 클래스에 믹스인한 클래스와 트레이트를 선형화해서 어떤 메서드를 호출할지 결정한다.
+* 선형화를 할 때 항상 맨 앞에는 구현한 클래스 자기 자신이 위치한다. (TaxableRegularPolicy)
+* 그 후 오른쪽에 선언된 트레이트를 그다음 자리에 위치시키고 왼쪽 방향으로 가면서 순서대로 그 자리에 위치시킨다.
+* TaxableRegularPolicy -> TaxablePolicy -> RegularPolicy -> BasicRatePlicy
+
+TaxableRegularPolicy의 인스턴스가 calculateFee를 수신했다고 가정한다.
+1. 먼저 TaxableRegularPolicy 클래스에서 메서드를 찾는다.
+2. 메서드를 발견할 수 없기 때문에 TaxablePolicy의 calculateFee를 실행한다.
+3. 메서드 구현 안에 super 호출이 있기 때문에 RegularPolicy에 메서드가 존재하는지 검색한다.
+4. 메서드를 발견할 수 없기 때문에 BasicRatePolicy의 calculateFee를 실행한다.
+5. 제어는 TaxablePolicy 트레이트로 돌아오고 super호출 이후의 코드가 실행된다.
+
+여기서 중요한 것은 믹스인되기 전까지는 상속 계층 안에서 TaxablePolicy 트레이트의 위치가 결정되지 않는다는 것이다. 어떤 클래스에 믹스인할지에 따라 TaxablePolicy 트레이트의 위치는 동적으로 변경된다. 세금 정책과 비율 할인 정책은 임의의 순서에 따라 조합될 수 있어야 한다.
+
+표준 요금제에 세금 정책을 적용한 후 비율 할인 정책을 적용하는 경우
+1. RegularPolicy의 calculateFee 메서드 실행
+2. TaxablePolicy 트레이트를 적용
+3. RateDiscountablePolicy 트레이트 적용
+* RateDiscountable AndTaxableRegularPolicy -> RateDiscountablePolicy -> TaxablePolicy -> RegularPolicy -> BasicRatePolicy
+* RateDiscountablePolicy 상위에 TaxablePolicy를 위치시켜야 super 호출에 의해 세금 정책이 먼저 적용될 수 있다.
+```
+class RateDiscountableAndTaxableRegularPolicy(
+  amount: Integer,
+  seconds: Integer,
+  val discountAmount: Integer
+  val taxRate: Double)
+extends RegularPolicy(amount, seconds)
+with TaxablePolicy
+with RateDiscountablePolicy
+```
+
+반대로 표준 요금제에 비율 할인 정책을 적용한 후 세금 정책을 적용하는 경우
+* 믹스인은 재사용 가능한 코드를 독립적으로 작성한 후 필요한 곳에서 쉽게 조합할 수 있게 해준다.
+* 믹스인도 클래스 폭발 문제를 야기하는 것으로 보일 수도 있다.
+* 사실 클래스 폭발 문제의 단점을 클래스가 늘어난다는 것이 아니라 클래스가 늘어날수록 중복 코드도 함께 늘어난다는 점이다.
+* 믹스인에는 이런 문제가 발생하지 않는다.
+```
+class RateDiscountableAndTaxableRegularPolicy(
+  amount: Integer,
+  seconds: Integer,
+  val discountAmount: Integer
+  val taxRate: Double)
+extends RegularPolicy(amount, seconds)
+with RateDiscountablePolicy
+with TaxablePolicy
+```
+
+믹스인한 인스턴스가 오직 한 군데에서만 필요한 경우라면 클래스를 만들지 않고도 가능하다.
+```
+new RegularPolicy(100, 10)
+  with RateDiscountablePolicy
+  with TaxablePolicy {
+    val discountAmount = 100
+    val taxRate = 0.02
+  }
+```
+
 
 ### 쌓을 수 있는 변경
 
