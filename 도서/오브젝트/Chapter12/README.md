@@ -57,3 +57,117 @@
 * self 참조
 * super 참조
 
+### 상속을 사용한 강의 평가
+수강생들의 성적을 계산하는 예제 프로그램을 구현한다.
+* `Pass:3 Fail:2z A:1 B:1 C:1 D:0 F:2` 같은 형식으로 성적 통계를 출력한다.
+```
+public class Lecture {
+    private int pass;
+    private String title;
+    private List<Integer> scores = new ArrayList<>();
+
+    public Lecture(String title, int pass, List<Integer> scores) {
+        this.title = title;
+        this.pass = pass;
+        this.scores = scores;
+    }
+
+    public double average() {
+        return scores.stream().mapToInt(Integer::intValue).average().orElse(0);
+    }
+
+    public List<Integer> getScores() {
+        return Collections.unmodifiableList(scores);
+    }
+
+    public String evaluate() {
+        return String.format("Pass:%d Fail:%d", passCount(), failCount());
+    }
+
+    private long passCount() {
+        return scores.stream().filter(score -> score >= pass).count();
+    }
+
+    private long failCount() {
+        return scores.size() - passCount();
+    }
+}
+
+public class Grade {
+    private String name;
+    private int upper,lower;
+
+    private Grade(String name, int upper, int lower) {
+        this.name = name;
+        this.upper = upper;
+        this.lower = lower;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public boolean isName(String name) {
+        return this.name.equals(name);
+    }
+
+    public boolean include(int score) {
+        return score >= lower && score <= upper;
+    }
+}
+
+public class GradeLecture extends Lecture {
+    private List<Grade> grades;
+
+    public GradeLecture(String name, int pass, List<Grade> grades, List<Integer> scores) {
+        super(name, pass, scores);
+        this.grades = grades;
+    }
+
+    @Override
+    public String evaluate() {
+        return super.evaluate() + ", " + gradesStatistics();
+    }
+
+    private String gradesStatistics() {
+        return grades.stream().map(grade -> format(grade)).collect(joining(" "));
+    }
+
+    private String format(Grade grade) {
+        return String.format("%s:%d", grade.getName(), gradeCount(grade));
+    }
+
+    private long gradeCount(Grade grade) {
+        return getScores().stream().filter(grade::include).count();
+    }
+
+    public double average(String gradeName) {
+        return grades.stream()
+                .filter(each -> each.isName(gradeName))
+                .findFirst()
+                .map(this::gradeAverage)
+                .orElse(0d);
+    }
+
+    private double gradeAverage(Grade grade) {
+        return getScores().stream()
+                .filter(grade::include)
+                .mapToInt(Integer::intValue)
+                .average()
+                .orElse(0);
+    }
+}
+```
+
+GradeLecture와 Lecture에 구현된 두 evaluate 메서드의 시그니처가 완전히 동일 하다는 것으로 동일한 시그니처를 가진 메서드가 존재할 경우 자식 클래 스의 메서드 우선순위가 더 높다.
+* 메시지를 수신했을 때 부모 클래 스의 메서드가 아닌 자식 클래스의 메서드가 실행된다는 것을 의미
+* 자식 클래스 안에 상속받은 메서드와 동일한 시그니처의 메서드를 재정해서 부모 클래스의 구현 을 새로운 구현으로 대체하는 것을 `메서드 오버라이딩`이라고 부른다.
+
+### 데이터 관점의 상속
+* 데이터 관점에서 상속은 자식 클래스의 인스턴스 안에 부모 클래스의 인스턴스를 포함하는 것으로 볼 수 있다.
+* 자식 클래스의 인스턴스는 자동으로 부모 클래스에서 정의한 모든 인스턴스 변수를 내부에 포함하게 되는 것이다.
+
+<img src="./image/그림%2012.3.png">
+
+### 행동 관점의 상속
+
