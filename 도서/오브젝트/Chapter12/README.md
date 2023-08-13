@@ -177,3 +177,22 @@ GradeLecture와 Lecture에 구현된 두 evaluate 메서드의 시그니처가 �
 
 ## 03. 업캐스팅과 동적 바인딩
 ### 같은 메시지, 다른 메서드
+성적 계산 프로그램에 기능을 추가한다.
+* 교수별로 강의에 대한 성적 통계를 계산하는 기능을 추가
+* 통계를 계산하는 책임은 Professor 클래스
+```
+public class Professor {
+    private String name;
+    private Lecture lecture;
+
+    public Professor(String name, Lecture lecture) {
+        this.name = name;
+        this.lecture = lecture;
+    }
+
+    public String compileStatistics() {
+        return String.format("[%s] %s - Avg: %.1f", name,
+                lecture.evaluate(), lecture.average());
+    }
+}
+```
