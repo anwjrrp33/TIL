@@ -290,3 +290,16 @@ C++는 상속 계층 안에서 동일한 이름의 메서드를 숨겨서 클라
 > 동적 메서드 탐색과 관련된 규칙이 언어마다 다를 수 있다는 점으로 사용하는 언어의 문법과 메서드 탐색 규칙을 주의깊게 살펴봐야 한다.
 
 ### 동적인 문맥
+* 메시지를 수신한 객체가 무엇이냐에 따라 메서드 탐색을 위한 문맥이 동적으로 바뀌며 이 동적인 문맥을 결정하는 것이 메세지를 수신한 객체를 가리키는 self 참조이다.
+* self 참조 가 동적 문맥을 결정한다는 것은 종종 어떤 메서드가 실행될지 예상하기 어렵게 만들며 대표적인 경우가 `self 전송(self send)`이다.
+```
+public class Lecture { 
+    public String stats() {
+        return String.format("Title: %s, Evaluation Method: %s", title, getEvaluationMethod());
+     }
+
+    public String getEvaluationMethod() { 
+        return "Pass or Fail";
+    } 
+}
+```
