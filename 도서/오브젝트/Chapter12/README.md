@@ -279,7 +279,7 @@ lecture.evaluate();
 #### 메서드 오버로딩
 * 자식 클래스의 메서드와 부모 클래스의 메서드가 공존한다.
 
-![Alt text](image.png)
+<img src="./image/그림%2012.15.png">
 
 동일한 이름의 메서드가 공존하는 경우를 메서드 오버로딩이라고 부른다.
 * average() 메서드와 average(String grade) 메서드는 이름은 같지만 시그니처가 다르다.
@@ -291,7 +291,7 @@ C++는 상속 계층 안에서 동일한 이름의 메서드를 숨겨서 클라
 
 ### 동적인 문맥
 * 메시지를 수신한 객체가 무엇이냐에 따라 메서드 탐색을 위한 문맥이 동적으로 바뀌며 이 동적인 문맥을 결정하는 것이 메세지를 수신한 객체를 가리키는 self 참조이다.
-* self 참조 가 동적 문맥을 결정한다는 것은 종종 어떤 메서드가 실행될지 예상하기 어렵게 만들며 대표적인 경우가 `self 전송(self send)`이다.
+* self 참조가 동적 문맥을 결정한다는 것은 종종 어떤 메서드가 실행될지 예상하기 어렵게 만들며 대표적인 경우가 `self 전송(self send)`이다.
 ```
 public class Lecture { 
     public String stats() {
@@ -303,3 +303,23 @@ public class Lecture {
     } 
 }
 ```
+```
+public class GradeLecture extends Lecture {
+    @Override
+    public String getEvaluationMethod() {
+        return "Grade";
+    }
+}
+```
+
+1. self 참조는 GradeLecture 인스턴스를 가리키도록 설정되고 탐색은 GradeLecture 부터 시작한다.
+2. GradeLecture 클래스에는 stats 메세지를 처리할 메서드가 없기 때문에 부모 클래스인 Lecture 에서 메서드 탐색을 계속하고 Lecture 에서 stats 메서드를 발견하고 실행한다.
+3. 실행 중에, self 참조가 가리키는 getEvaluationMethod 메세지를 전송하는 구문과 마주친다.
+4. 메서드 탐색은 self 참조가 가리키는 객체에서 다시 시작한다.
+   
+<img src="./image/그림%2012.17.png">
+
+> self 전송은 자식 클래스에서 부모 클래스 방향으로 진행되는 동적 메서드 탐색 경로를 다시 self 참조가 가리키는 원래의 자식 클래스로 이동시킨다.
+> self 전송이 깊은 상속 계층과 계층 중간중간에 함정처럼 숨겨져 있는 메서드 오버라이딩과 만나면 극 단적으로 이해하기 어려운 코드가 만들어진다.
+
+### 이해할 수 없는 메시지
