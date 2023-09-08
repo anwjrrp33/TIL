@@ -187,5 +187,32 @@ public class Penguin extends Bird {
 클라이언트가 날 수 있는 새를 원한다면 아래와 같은 방법을 사용할 수 있다.
 * fly 메서드를 오버라이딩해서 내부 구현을 비워둔다.
   * Penguin과 Bird의 행동은 호 환되지 않기 때문에 올바른 타입 계층이라고 할 수 없다.
+  ```
+  public class Penguin extends Bird {
+    @Override
+    public void fly() {} 
+  }
+  ```
 * fly 메서드를 오버라이딩한 후 예외를 던진다.
   * 클라이언트는 예외가 던져질 것이라고는 기대하지 않았을 것이고 클라이언트의 관점에서 Bird와 Penguin의 행동이 호환되지 않는다.
+  ```
+  public class Penguin extends Bird {
+    ...
+    @Override
+    public void fly() {
+        throw new UnsupportedOperationExceptionO;
+    } 
+  }
+  ```
+* 펭귄이 아닌 경우에만 메시지를 전송한다.
+  * 날 수 없는 또 다른 새가 상속 계층에 추가된다면 문제가 발생한다.
+  * instanceof처럼 객체의 타입을 확인하는 코드는 새로운 타입을 추가할 때마다 코드 수정을 요구하기 때문에 개방-폐쇄 원칙을 위반한다.
+  ```
+  public void flyBird(Bird bird) {
+    // 인자로 전달된 모든 bird가 Penguin의 인스턴스가 아닐 경우에만 
+    // fly() 메시지를 전송한다
+    if (!(bird instanceof Penguin)) {
+        bird.flyO;
+    } 
+  }
+  ```
