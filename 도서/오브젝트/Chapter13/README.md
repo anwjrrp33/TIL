@@ -216,3 +216,22 @@ public class Penguin extends Bird {
     } 
   }
   ```
+
+### 클라이언트 기대에 따라 계층 분리하기
+* 행동 호환성을 만족시키지 않는 상속 계층을 그대로 유지한 채 클라이언트의 기대를 충족시킬 수 있는 방법을 찾기란 쉽지 않고 문제를 해결할 수 있는 방법은 `클라이언트의 기대에 맞게 상속 계층을 분리`하는 것뿐이다.
+
+```
+public class Bird {
+    ...
+}
+
+public class FlyingBird extends Bird { 
+    public void fly() { ... }
+}
+
+public class Penguin extends Bird { 
+    ...
+}
+```
+
+<img src="./image/그림%2013.4.png">
