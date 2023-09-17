@@ -307,4 +307,33 @@ public class Penguin extends Bird {
 
 > 상속이 서브타이핑을 위해 사용될 경우에만 is-a 관계이며 서브클래싱을 구현하기 위해 상속을 사용했다면 is-a 관계라고 말할 수 없다.
 
-### 리스코프 치환 원칙은 유연한 설계의 기반이다.
+### 리스코프 치환 원칙은 유연한 설계의 기반이다
+* 리스코프 치환 원칙은 클라이언트가 어떤 자식 클래스와도 안정적으로 협력할 수 있는 상속 구조를 구현할 수 있는 가이드라인을 제공한다.
+* 새로운 자식 클래스를 추가하더라도 클라이언트의 입장에서 동일하게 행동하기만 한다면 클라이언트를 수정하지 않고도 상속 계층을 확장할 수 있다.
+
+리스코프 치환 원칙을 따르는 설계는 유연할뿐만 아니라 확장성이 높다.
+* 중복할인 정책을 구현해도 기존의 DiscountPolicy 상속 계층에 새로운 자식 클래스인 OverlappedDiscountPolic를 추가하더라도 클라이언트를 수정할 필요가 없었다.
+```
+public class OverlappedDiscountPolicy extends DiscountPolicy {
+
+	private List<DiscountPolicy> discountPolicies = new ArrayList<>();
+
+	public OverlappedDiscountPolicy(DiscountPolicy ... discountPolicies) {
+    this.discountPolicies = Arrays.aslist(discount Policies); 
+  }
+	
+	@Override 
+  protected Money getDiscount Amount (Screening screening) { 
+    Money result =Money ZERO;
+		for(Discount Policy each: discount Policies) {
+			result = result.plus(each.calculateDiscountAmount(screening)); 
+		}
+		return result;
+	}
+}
+```
+
+위 코드의 설계는 의존성 역전 원칙과 개방-폐쇄 원칙, 리스코프 치환 원칙이 한데 어우러져 설계를 확장 가능하게 만든 대표적인 예다.
+* 의존성 역전 원칙
+* 리스코프 치환 원칙
+* 개방-폐쇄원칙
