@@ -335,5 +335,17 @@ public class OverlappedDiscountPolicy extends DiscountPolicy {
 
 위 코드의 설계는 의존성 역전 원칙과 개방-폐쇄 원칙, 리스코프 치환 원칙이 한데 어우러져 설계를 확장 가능하게 만든 대표적인 예다.
 * 의존성 역전 원칙
+  * 구체 클래스인 Moive와 OverlappedDiscountPolicy 모두 추상 클래스인 DiscountPolicy에 의존한다.
+  * 상위 수준의 모듈인 Movie와 하위수준 모듈인 OverlappedDiscountPolicy는 모두 추상 클래스인 DisCountPolicy의 의존하느데 따라서 DIP를 만족한다.
 * 리스코프 치환 원칙
+  * DiscountPolicy와 협력하는 Movie 관점에서 DicountPolicy대신 OverlappedDiscountPolicy와 렵력하더라도 아무 문제가 없다 따라서 이 설계는 LSP를 만족한다.
 * 개방-폐쇄원칙
+  * 중복 할인 정책이라는 새로운 기능을 추가하기 위해 DiscountPolicy의 자식 클래스인 OverlappedDiscountPolicy를 추가하더라도 Movie에는 영향을 끼치지 않는다. 다시 말해서 기능 확장을 하면서 기존 코드를 수정할 필요가 없다.
+
+리스코프 치환 원칙은 개방-폐쇄 원칙을 아래와 같이 지원한다. 
+* 자식 클래스가 클라이언트 관점에서 부모 클래스를 대체할 수 있다면 기능 확장을 위해 자식 클래스를 추가하더라도 코드를 수정 할 필요가 없어지기 떄문이다. 
+* 반대로 둘중하나라도 위반하면 다른 한쪽을 잠재적으로 위반한다.
+
+<img src="./image/그림%2013.8.png">
+
+### 타입 계층과 리소코프 치환 원칙
