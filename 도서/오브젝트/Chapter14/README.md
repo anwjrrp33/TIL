@@ -51,3 +51,34 @@
         <td>초기 분 동안 10초당 50원<br>초기 1분 이후 10초당 20원</td>
     </tr>
 </table>
+
+#### 조합 가능한 모든 경우의 수
+<img src="./image/그림%2014.1.png">
+
+
+#### 클래스의 구조
+* 고정요금 방식 → FixedFeePolicy
+* 시간대별 방식 → TimeOfDayDiscountPolicy
+* 요일별 방식 → DayOfWeekDiscountPolicy
+* 구간별 방식 → DurationDiscountPolicy
+
+### 고정요금 방식 구현하기
+* 고정요금 방식은 일반요금제와 동일하기 때문에 클래스 RegularPolicy → FixedFeePolicy로 수정한다.
+```
+public class FixedFeePolicy extends BasicRatePolicy {       
+    private Money amount;
+    private Duration seconds;
+
+    public FixedFeePolicy(Money amount, Duration seconds) { 
+        this.amount = amount;
+        this.seconds = seconds;
+    }
+
+    @Override
+    protected Money calculateCallFee(Call call) {
+        return amount.times(call.getDuration().getSeconds() / seconds.getSeconds()); 
+    }
+}
+```
+
+### 시간대별 방식 구현하기
