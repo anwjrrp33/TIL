@@ -82,3 +82,47 @@ public class FixedFeePolicy extends BasicRatePolicy {
 ```
 
 ### 시간대별 방식 구현하기
+* 시간대별 방식의 통화 요금을 계산하기 위해서는 통화의 시작 시간과 종
+료 시간뿐만 아니라 시작 일자와 종료 일자도 함께 고려해야 한다.
+* 핵심은 규칙에 따라 통화 시간을 분할하는 방법을 결정하는 것으로 DateTimelnterval 클래스를 추가한다.
+```
+public class DateTimelnterval { 
+    private LocalDateTime from; 
+    private LocalDateTime to;
+
+    public static DateTimelnterval of(LocalDateTime from, LocalDateTime to) { 
+        return new DateTimelnterval(from, to);
+    }
+
+    public static DateTimelnterval toMidnight(LocalDateTime from) { 
+        return new DateTimelnterval(from, LocalDateTime.of(from.toLocalDate()z LocalTime.of(23, 59, 59)));
+    }
+
+    public static DateTimelnterval fromMidnight(LocalDateTime to) { 
+        return new DateTimelnterval(LocalDateTime.of(to.toLocalDate(), LocalTime.of(0, 0)), to); 
+    }
+
+    public static DateTimelnterval during(LocalDate date) {     
+        return new DateTimelnterval(
+            LocalDateTime.of(date, LocalTime.of(0, 0)), 
+            LocalDateTime.of(date, LocalTime.of(23, 59, 59)));
+    }
+
+    private DateTimelnterval(LocalDateTime from, LocalDateTime to) { 
+        this.from = from;
+        this.to = to;
+    }
+
+    public Duration duration() {
+        return Duration.between(from, to);
+    }
+    
+    public LocalDateTime getFrom() { 
+        return from;
+    }
+
+    public LocalDateTime getTo() { 
+        return to;
+    } 
+}
+```
