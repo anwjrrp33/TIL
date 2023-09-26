@@ -126,3 +126,65 @@ public class DateTimelnterval {
     } 
 }
 ```
+```
+public class Call {
+	private DateTimeInterval interval;
+
+	public Call(LocalDateTime from, LocalDateTime to) {
+		this.interval = DateTimeInterval.of(from, to);
+	}
+
+	public Duration getDuration() {
+		return interval.duration();
+	}
+
+	public LocalDateTime getFrom() {
+		return interval.getFrom();
+	}
+
+	public LocalDateTime getTo() {
+		return interval.getTo();
+	}
+
+	public DateTimeInterval getInterval() {
+		return interval;
+	}
+
+	public List<DateTimeInterval> splitByDay() {
+		return interval.splitByDay();
+	}
+}
+```
+
+전체 통화 시간을 일자와 시간 기준으로 분할해서 계산해보는데 요금 계산 로직을 아래와 같이 두 단계로 나눠 구현한다.
+* 통화 기간을 일자별로 분리한다.
+* 일자별로 분리된 기간을 다시 시간대별 규칙에 따라 분리한 후 각 기간에 대해 요금을 계산한다.
+
+```
+public class TimeOfDayDiscountPolicy extends BasicRatePolicy {
+    private List<LocalTime> starts = new ArrayList<LocalTime>();
+    private List<LocalTime> ends = new ArrayList<LocalTime>();
+    private List<Duration> durations = new ArrayList<Duration>();
+    private List<Money>  amounts = new ArrayList<Money>();
+
+    @Override
+    protected Money calculateCallFee(Call call) {
+        Money result = Money.ZERO;
+        for(DateTimeInterval interval : call.splitByDay()) {
+            for(int loop=0; loop < starts.size(); loop++) {
+                result.plus(amounts.get(loop).times(Duration.between(from(interval, starts.get(loop)),
+                        to(interval, ends.get(loop))).getSeconds() / durations.get(loop).getSeconds()));
+            }
+        }
+        return result;
+    }
+
+    private LocalTime from(DateTimeInterval interval, LocalTime from) {
+        return interval.getFrom().toLocalTime().isBefore(from) ? from : interval.getFrom().toLocalTime();
+    }
+
+    private LocalTime to(DateTimeInterval interval, LocalTime to) {
+        return interval.getTo().toLocalTime().isAfter(to) ? to : interval.getTo().toLocalTime();
+    }
+}
+```
