@@ -188,3 +188,50 @@ public class TimeOfDayDiscountPolicy extends BasicRatePolicy {
     }
 }
 ```
+
+### 요일별 방식 구현하기
+* 요일의 목록, 단위 시간, 단위 요금이라는 세 가지 요소로 구성된다.
+* DayOfWeekDiscountRule이라는 하나의 클래스로 구현하는 것이 더 나은 설계라고 판단했다.
+* DayOfWeekDiscountRule 클래스는 규칙을 정의하기 위해 필요한 요일의 목록(dayOfWeeks), 단위 시간(duration), 단위 요금(amount)을 인스턴스 변수로 포함한다.
+```
+public class DayOfWeekDiscountRule {
+    private List<DayOfWeek> dayOfWeeks = new ArrayList<>();
+    private Duration duration = Duration.ZERO;
+    private Money amount = Money.ZERO;
+
+    public DayOfWeekDiscountRule(List<DayOfWeek> dayOfWeeks,
+                                 Duration duration, Money  amount) {
+        this.dayOfWeeks = dayOfWeeks;
+        this.duration = duration;
+        this.amount = amount;
+    }
+
+    public Money calculate(DateTimeInterval interval) {
+        if (dayOfWeeks.contains(interval.getFrom().getDayOfWeek())) {
+            return amount.times(interval.duration().getSeconds() / duration.getSeconds());
+        }
+
+        return Money.ZERO;
+    }
+}
+```
+* 요일별 방식 역시 통화 기간이 여러 날에 걸쳐있을 수 있다는 사실로 시간대별 방식과 동일하게 통화 기간을 날짜 경계로 분리하고 분리된 각 통화 기간을 요일별로 설정된 요금 정책에 따라 적절하게 계산해야 한다.
+```
+public class DayOfWeekDiscountPolicy extends BasicRatePolicy {
+    private List<DayOfWeekDiscountRule> rules = new ArrayList<>();
+
+    public DayOfWeekDiscountPolicy(List<DayOfWeekDiscountRule> rules) {
+        this.rules = rules;
+    }
+
+    @Override
+    protected Money calculateCallFee(Call call) {
+        Money result = Money.ZERO;
+        for(DateTimeInterval interval : call.getInterval().splitByDay()) {
+            for(DayOfWeekDiscountRule rule: rules) { result.plus(rule.calculate(interval));
+            }
+        }
+        return result;
+    }
+}
+```
