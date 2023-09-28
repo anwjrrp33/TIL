@@ -235,3 +235,69 @@ public class DayOfWeekDiscountPolicy extends BasicRatePolicy {
     }
 }
 ```
+
+### 구간별 방식 구현하기
+* 지금까지 구현한 고정요금 방식, 시간대별 방식, 요일별 방식의 구현 클래스를 보면 괜찮은 구현으로 보이지만 모아놓으면 문제점이 보인다.
+* 큰 문제점은 이 클래스들이 유사한 문제를 해결하 고 있음에도 불구하고 설계에 일관성이 없다는 것으로 구현 방식에 있어서는 완전히 제각각이라는 것이다.
+
+#### 비일관성
+* 비일관성은 두 가지 상황에서 두 가지 상황에서 발목을 잡는다.
+  1. 새로운 구현을 추가해야 하는 상황
+  2. 기존의 구현을 이해해야 하는 상황
+* 비일관성이 문제가 되는 이유는 개발자로서 우리가 수행하는 대부분의 활동이 코드를 추가하고 이해하는 일과 깊숙히 연관돼 있기 때문이다.
+* 일관성이 없는 설계는 개발자가 여러가지 해결 방법 중에서 가장 적절한 방법을 찾아야하는 부담을 안게되고, 결론은 유사한 기능을 서로 다른 방식으로 구현해서는 안 된다.
+* 유지보수 가능한 시스템을 구축하는 첫걸음은 협력을 일관성 있게 만드는 것으로 유사한 기능은 유사한 방식으로 구현해야 한다.
+
+요일별 방식의 경우처럼 규칙을 정의하는 새로운 클래스를 추가한다.
+* DurationDiscountRule 클래스 생성
+* 코드를 재사용하기 위해 FixedFeePolicy 클래스를 상속
+```
+public class DurationDiscountRule extends FixedFeePolicy {
+    private Duration from;
+    private Duration to;
+
+    public DurationDiscountRule(Duration from, Duration to, Money amount, Duration seconds) {
+        super(amount, seconds);
+        this.from = from;
+        this.to = to;
+    }
+
+    public Money calculate(Call call) {
+        if (call.getDuration().compareTo(to) > 0) {
+            return Money.ZERO;
+        }
+
+        if (call.getDuration().compareTo(from) < 0) {
+            return Money.ZERO;
+        }
+
+        // 부모 클래스의 calculateFee(phone)은 Phone 클래스를 파라미터로 받는다.
+        // calculateFee(phone)을 재사용하기 위해 데이터를 전달할 용도로 임시 Phone을 만든다.
+        Phone phone = new Phone(null);
+        phone.call(new Call(call.getFrom().plus(from),
+                            call.getDuration().compareTo(to) > 0 ? call.getFrom().plus(to) : call.getTo()));
+
+        return super.calculateFee(phone);
+    }
+}
+```
+```
+public class DurationDiscountPolicy extends BasicRatePolicy {
+    private List<DurationDiscountRule> rules = new ArrayList<>();
+
+    public DurationDiscountPolicy(List<DurationDiscountRule> rules) {
+        this.rules = rules;
+    }
+
+    @Override
+    protected Money calculateCallFee(Call call) {
+        Money result = Money.ZERO;
+        for(DurationDiscountRule rule: rules) {
+            result.plus(rule.calculate(call));
+        }
+        return result;
+    }
+}
+```
+* 기존의 설계가 어떤 가이드도 제공하지 않기 때문에 새로운 기본 정책을 구현해야 하는 상황에서 또 다른 개발자는 또 다른 방식으로 기본 정책을 구현할 가능성이 높다. 
+* 시간이 흐를수록 설계의 일관성은 더욱더 어긋나게 될 것이다.
