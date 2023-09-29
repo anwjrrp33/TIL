@@ -301,3 +301,11 @@ public class DurationDiscountPolicy extends BasicRatePolicy {
 ```
 * 기존의 설계가 어떤 가이드도 제공하지 않기 때문에 새로운 기본 정책을 구현해야 하는 상황에서 또 다른 개발자는 또 다른 방식으로 기본 정책을 구현할 가능성이 높다. 
 * 시간이 흐를수록 설계의 일관성은 더욱더 어긋나게 될 것이다.
+
+#### 코드 재사용을 위한 상속은 해롭다.
+* DurationDiscountRule은 FixedFeePolicy 클래스의 서브타입이 아닌데 상속을 사용하고 있다.
+* DurationDiscountRule은 amount, seconds와 calculateFee 메서드를 재사용하기 위해서 즉 코드 재사용을 위해서 상속을 사용했다.
+* 하지만 두 클래스 사이의 강한 결합도는 설계 개선과 새로운 기능의 추가를 방해한다.
+* 이 코드는 이해하기도 어렵고, calculate 메서드 안에서 Phone과 Call의 인스턴스를 생성하는 것이 꽤나 부자연스러워 보인다.
+* 상속을 위해 설계된 클래스가 아닌 재사용을 위해 억지로 코드를 비튼 결과다.
+* 배경지식을 모르는 상태에서 이 코드와 처음 대면했다면 쉽게 이해할 수 없을 것이다.
