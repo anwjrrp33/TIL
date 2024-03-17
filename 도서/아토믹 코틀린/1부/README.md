@@ -284,4 +284,64 @@ Auf Wiedersehen!
 
 > 함수를 작성할 때는 서술적인 이름을 사용해야 코드를 쉽게 읽어 주석을 남길 필요성을 줄인다.
 
-## 07. if 식
+## 아톰 07. if 식
+### if 키워드
+* if 키워드는 식을 검사해 값이 true나 false 중 어느 것인지 알아내 결과에 따라 작업을 수행한다.
+* 참이나 거짓을 표시하는 식은 불리언(Boolean) 방식이라고 한다.
+* if 뒤에 있는 괄호 안의 식은 반드시 true나 false로 평가되어야 한다.
+
+## 아톰 08. 문자열 템플릿
+### 문자열 템플릿
+* 문자열 템플릿은 `String을 프로그램으로 만드는 방법`이다.
+* 식별자 이름 앞에 $를 붙이면 문자열 템플릿이 식별자의 내용을 String에 넣어준다.
+  1. $answer의 값이 동일한 식별자를 가진 변수 answer의 값으로 치환된다.
+  2. 동일한 식별자가 존재하지 않아서 프로그램 식별자로 인식되지 않아서 아무 일도 일어나지 않는다.
+  ```
+  fun main() {
+    val answer = 42
+    println("Found $answer!") // [1]
+    println("printing a $1") // [2]
+  }
+  // 출력
+  Found 42! 
+  printing a $1
+  ```
+* 문자열 연결(+)로 String에 값을 넣을 수도 있다.
+  ```
+  fun main() {
+    val s = "hi\n" // \n은 새줄 문자
+    val n = 11
+    val d = 3.14
+
+    println("first: " + s + "second: " + n + ", third: " + d)
+  }
+  // 출력
+  first: hi
+  second: 11, third: 3.14
+  ```
+* ${} 중괄호 안에 식을 넣어 식을 평가 후 결괏값을 String으로 변환해 String에 결과를 삽입한다.
+  1. if (condition) 'a' else 'b'의 결과가 전체 ${} 식을 대신한다.
+  ```
+  fun main() {
+    val condition = true
+    println("${if (condition) 'a' else 'b'}") // [1]
+    val x = 11
+    println("$x + 4 = ${x + 4}")
+  }
+  // 출력
+  a
+  11 + 4 = 15
+  ```
+* String 안에 특수 문자를 넣어야하는 경우 역슬래시(\)를 사용해 이스케이프하거나 String 리터럴을 사용해야 한다.
+  ```
+  fun main() {
+    val s = "value"
+    println("s = \"$s\".")
+    println("""s = "$s".""")
+  }
+  // 출력
+  s = "value".
+  s = "value".
+  ```
+
+## 아톰 09. 수 타입
