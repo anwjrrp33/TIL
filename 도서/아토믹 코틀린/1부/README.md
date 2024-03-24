@@ -332,7 +332,7 @@ Auf Wiedersehen!
   a
   11 + 4 = 15
   ```
-* String 안에 특수 문자를 넣어야하는 경우 역슬래시(\)를 사용해 이스케이프하거나 String 리터럴을 사용해야 한다.
+* String 안에 특수 문자를 넣어야하는 경우 역슬래시를 사용해 이스케이프하거나 String 리터럴을 사용해야 한다.
   ```
   fun main() {
     val s = "value"
@@ -345,3 +345,62 @@ Auf Wiedersehen!
   ```
 
 ## 아톰 09. 수 타입
+### 수 타입
+* 수(숫자) 타입은 타입에 따라 서로 다른 방식으로 저장된다.
+* 식별자를 만들고 정숫값을 대입하면 코틀린은 타입을 추론하며, 가독성을 위해 숫자 사이에 밑줄을 넣도록 허용한다.
+  ```
+  fun main() {
+    val million = 1_000_000 // Int를 추론
+    println(million)
+  }
+  // 출력
+  1000000
+  ```
+* 기본적인 수학 연산자인 더하기, 빼기, 곱하기, 나누기, 나머지를 제공한다.
+  ```
+  fun main() {
+    val numerator: Int = 19
+    val denominator: Int = 10
+    printIn(numerator + denominator) // 더하기
+    printIn(numerator - denominator) // 빼기
+    printIn(numerator * denominator) // 곱하기
+    printIn(numerator / denominator) // 나누기
+    printIn(numerator % denominator) // 나머지
+  }
+  // 출력 
+  29
+  9
+  190
+  1
+  9
+  ```
+* 연산의 순서는 기본적인 산순 연산 순서를 따르며, 먼저 실행하고 싶으면 괄호를 사용한다.
+  ```
+  fun main() {
+    println(45 + 5 * 6) // 곱셈 연산이 먼저 수행된 뒤 덧셈 연산 수행
+    println((45 + 5) * 6) // 덧셈 연산이 먼저 수행된 뒤 곱셈 연산 수행
+  }
+  // 출력
+  75
+  300
+  ```
+* 정수와 실수의 나눗셈 처리 방법은 다르다.
+  * 정수 나눗셈에서 나머지를 처리하는 일반적인 방법은 버림으로 소수점 이하를 잘라내 버린다.
+* 프로그래밍 언어마다 정수에 저장할 수 있는 값의 범위가 정해져 있어서 값을 넘어서는 경우 Overflow가 일어나게 된다.
+  * Int보다 큰 수를 저장할려면 Long을 사용하면 된다.
+* Int, Long형에서 Int.MAX_VALUE, Int.MIN_VALUE, Long.MAX_VALUE, Long.MIN_VALUE 와 같은 미리 정의된 상수를 지원한다.
+* Long 타입의 val를 정의하고 싶으면 수 리터럴 뒤에 L을 붙여서 코틀린에게 명시하면 된다.
+  ```
+  fun main() {
+    val i = 0 // Int 타입을추론
+    val l1 = OL // L을 사용해 Long 타입으로 지정
+    val l2: Long = 0 // 명시적으로 타입 지정 
+    println("$l1 $l2")
+  }
+  // 출력
+  0 0
+  ```
+
+  ## 아톰 10. 불리언
+  ### 논리곱(and)와 논리합(or) 연산자
+  
