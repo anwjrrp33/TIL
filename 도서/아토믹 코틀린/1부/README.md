@@ -401,6 +401,317 @@ Auf Wiedersehen!
   0 0
   ```
 
-  ## 아톰 10. 불리언
-  ### 논리곱(and)와 논리합(or) 연산자
-  
+## 아톰 10. 불리언
+### 논리곱(and)와 논리합(or) 연산자
+* &&(논리곱)
+  * 연산자 오른쪽과 왼쪽에 있는 Boolean 식이 모두 true일 때만 true를 돌려준다.
+* ||(논리합)
+  * 연산자 오른쪽과 왼쪽에 있는 Boolean 식 중 하나라도 true면 true를 돌려준다.
+* 우선순위는 괄호가 없는 경우 그리고(and)가 먼저 평가가 되고 또는(or)이 평가된다.
+
+## 아톰 11. while로 반복하기
+> 컴퓨터는 반복 작업을 수행하기에 이상적인 존재다.
+
+### while 키워드
+* 가장 기본적인 반복으로 사용되고 주어진 Boolean 식이 true인 동안 블록을 반복 수행한다.
+  ```
+  while (Boolean 식) {
+    // 반복할 코드
+  }
+  ```
+* 루프를 시작할 때 Boolean 식을 한 번 평가하고, 블록을 다시 반복하기 직전에 매번 다시 평가한다.
+  1. 비교 연산자에 따라 Boolean 결과를 내놓고 condition() 함수의 결과 타입을 Boolean을 추론한다.
+  2. condition()이 true를 반환하는 동안 본문의 코드를 반복한다.
+  3. i에 10을 더한 결과를 다시 i에 대입해준다.
+  ```
+  fun condition(i: Int) = 1 < 100 // [1]
+  fun main () {
+    var i = 0
+    while (condition(i)) { // [2]
+      print(".") 
+      i += 10 // [3]
+    }
+  }
+  // 출력
+  ..........
+  ```
+* while을 사용하는 다른 방법은 do와 함께 쓰는 방법이다.
+  ```
+  do {
+    // 반복할 코드
+  } while (Boolean 식)
+  ```
+
+### while과 do-while의 차이
+* do-while
+  * Boolean 식이 false를 돌려줘도 본문이 최소 한 번은 실행된다.
+* while
+  * 처음에 조건문이 false면 본문이 결코 실행되지 않는다.
+* do-while은 while 보다 덜 쓰인다.
+
+> 어떤 정수 범위 값을 차례로 반복(iteration)하기 위해서 while 루프를 쓰지 않고 for 루프를 사용한다.
+
+## 아톰 12. 루프와 범위
+### for 루프
+* for 키워드는 주어진 순열에 속한 각 값에 대해 코드 블록을 실행한다.
+  ```
+  for (v in 값들) {
+    // v를 사용해 어떤 일을 수행한다.
+  }
+  ```
+
+### 범위
+* 범위는 양 끝을 표현하는 두 정수를 사용해 구간을 정의하며, 기본적으로 두가지 방법이 있다.
+  1. 양 끝 값을 포함한 범위를 만든다.
+  2. until을 사용해 다음에 오는 값을 제외한 범위를 만들며 10은 제외된다.
+  ```
+  fun main() {
+    val range1 = 1..10 [1]
+    val range2 = 0 until 10 [2]
+  }
+  // 출력
+  1..10
+  0..9
+  ```
+  * 코틀린 1.8부터 `..<` 연산자가 도입되어 0 until 10을 0 ..< 10이라고 쓸 수 있다.
+  * 코틀린 1.8에서도 여전히 실수에 until을 쓸 수 없다.
+* 범위를 역방향으로 이터페이션 할 수 있으며, step 값을 사용하면 값의 간격을 1이 아닌 값으로 조정할 수 있다.
+  1. downTo는 감소하는 범위를 만든다.
+  2. step는 간격을 변경하며 값을 2를 지정해서 2씩 변한다.
+  3. until과 step을 함께 쓸 수 있다.
+  ```
+  fun showRange(r: IntProgression) { 
+    for (i in r) {
+        print("$i ")
+    }
+    print(" // $r") 
+    println()
+  }
+  fun main() {
+    showRange(1..5)
+    showRange(0 until 5)
+    showRange(5 downTo 1) // [1]
+    showRange(0..9 step 2) // [2]
+    showRange(0 until 10 step 3) // [3]
+    showRange(9 downTo 2 step 3) 
+  }
+  // 출력
+  1 2 3 4 5 // 1..5
+  0 1 2 3 4 // 0..4
+  5 4 3 2 1 // 5 downTo 1 step 1
+  0 2 4 6 8 // 0..8 step 2
+  0 3 6 9 // 0..9 step 3
+  9 6 3 // 9 downTo 3 step 3
+  ```
+* 이터레이션은 정수, 문자처럼 하나하나 값이 구분되는 양에 대해서만 가능하며 부동소수점 수에 대해서는 할 수 없다.
+
+### IntProgression
+* 산술적인 순열을 의미하며 코틀린이 제공하는 기본 타입이다.
+* 입력한 값을 표준적인 형태로 변환해 표현한다.
+
+### 문자열 범위
+* 문자 범위도 가능하다.
+  ```
+  fun main() {
+    for (c in 'a'..'z') {
+      print(c)
+    }
+  }
+  // 출력
+  abcdefghijklmnopqrstuvwxyz
+  ```
+* 각괄호([])를 사용해 숫자 인덱스를 통해 문자열의 문자에 접근할 수 있다.
+  ```
+  fun main() {
+    val s = "abc"
+    for (i in 0..s.lastIndex) {
+      print(s[i] + 1)
+    }
+  }
+  // 출력
+  bcd
+  ```
+* 문자는 아스키 코드에 해당하는 숫자 값을 저장되서 정수를 문자에 더하면 새 코드 값에 해당하는 새로운 문자를 얻을 수 있다.
+  ```
+  fun main() {
+    val ch: Char = 'a'
+    println(ch + 25)
+    println(ch < 'z')
+
+    for(ch in "Jnskhm ") {
+      print(ch + 1)
+    }
+  }
+  // 출력
+  z
+  true
+  Kotiln!
+  ```
+
+### repaet
+* 어떤 동작을 단순히 정해진 횟수만큼 반복하고 싶을 때 for 루프 대신 repeat()를 사용해도 된다.
+* repeat()는 키워드가 아닌 표준 라이브러리 함수다.
+  ```
+  fun main() {
+    repeat(2) {
+      println("hi!")
+    }
+  }
+  // 출력
+  hi!
+  hi!
+  ```
+
+## 아톰 13. in 키워드
+### in 키워드
+* in 키워드는 어떤 값이 주어진 범위 안에 들어 있는지 검사한다.
+  ```
+  fun main() {
+    val percent = 35
+    println(percent in 1..100)
+    println(0 <= percent && percent <= 100)
+  }
+  // 출력
+  true
+  true
+  ```
+  * 인텔리J IDEA는 두 번째 형태가 읽기 더 쉬우므로 첫 번째 형태를 두 번째 형태로 바꾸라고 제안한다.
+* in 키워드는 이터레이션, 원소 여부 검사, 문자열 여부 검사할 때 사용된다.
+  ```
+  fun main() {
+    // 이터레이션
+    val values = 1..3
+    for (v in values) {
+      println("iteration $v")
+    }
+    // 원소 여부 검사
+    val v = 2
+    if (v in values)
+      println("$v is a member of $values")
+    // 문자열 여부 검사
+    println('t' int ")
+    println('a' in '0'..'9')
+    println('5' in '0'..'9')
+    println('z' !in '0'..'9')
+  }
+  // 출력
+  interation 1
+  interation 2
+  interfation 3
+  2 is a member of 1..3
+  true
+  false
+  false
+  true
+  true
+  ```
+* 원소인지 여부를 검사할 때만 Double의 범위를 쓸 수 있다.
+  ```
+  fun main() {
+    println("0.999999 in 1.0..10.0? ${0.999999 in 1.0..10.0}")
+    println("5.0 in 1.0..10.0? ${5.0 in 1.0..10.0}")
+    println("10.0 in 1.0..10.0? ${10.0 in 1.0..10.0}")
+    println("10.0000001 in 1.0..10.0? ${10.0000001 in 1.0..10.0}")
+  }
+  // 출력
+  0.999999 in 1.0..10.0? false
+  5.0 in 1.0..10.0? true
+  10.0 in 1.0..10.0? true
+  10.0000001 in 1.0..10.0? false
+  ```
+  * 부동 소수점에서 범위를 만들 때 ..만 쓸 수 있었지만, 코틀린 1.8부터는 반 열린 범위를 만들어내는 ..<를 쓸 수 있다.
+* String이 어떤 String 범위 안에 속하는지 검사할 수 있다.
+  ```
+  fun main() {
+    println("ab" in "aa".."az")
+    println("ba" in "aa".."az")
+  }
+  // 출력
+  true
+  false
+  ```
+  * 알파벳순으로 문자열을 비교한다.
+
+## 아톰 14. 식과 문
+> 문과 식은 대부분의 프로그래밍 언어에서 가장 작은 코드 조각이다.
+
+### 식과 문의 차이
+* 문은 효과를 발생시키지만 결과를 내놓지 않는다.
+* 식은 항상 결과를 만들어낸다.
+
+### 문(statement)
+* 부수 효과(side effect)를 얻기 위해 문을 사용한다.
+* 결과를 내놓지 않기 때문에 쓸모 있으려면 문을 들러싸고 있는 주변 상태를 변경해야 한다.
+* A Statement chanages state(문은 상태를 변경한다).
+
+### 식(expression)
+* 식은 결괏값을 만들어낸다.
+* 식을 뜻하는 영어 expression에서 express는 힘을 주거나 짜내서 무언가를 배출하다라는 뜻이다.
+* An expression expresses(식은 값을 짜낸다).
+
+### 문과 for 루프
+* 코틀린의 `for 루프는 문`이며, 아무런 결괏값도 만들어내지 않기 때문에 for 문을 다른 변수에 대입할 수는 없다.
+* for 루프는 부수 효과를 위해서만 사용된다.
+  ```
+  fun main() {
+    // 다음과 같이 할 수는 없다.
+    val f = for (i in 1..10) {}
+    // 컴파일러 오류 발생 메세지
+    // for is not an expression, and only expressions are allowed here
+  }
+  ```
+* 문은 다른 식의 일부분이 되거나 변수에 대입할 수 없는 최상위 요소다.
+  * 코틀린에서 최상위 요소는 unitFun(), main() 처럼 단독으로 존재하는 코드를 의미한다.
+
+### 식과 함수 호출
+* `모든 함수 호출 코드는 식`이며, 함수가 Unit을 반환하며 부수 효과를 목적으로 호출되도 여전히 함수 호출 결과를 변수에 대입할 수 있다.
+* 식은 값을 돌려주기 때문에 이 값을 변수에 대입하거나 다른 식의 일부분으로 쓸 수 있다.
+  ```
+  fun unitFun() = Unit
+  fun main() {
+    println(unitFun())
+    val u1: Unit = println(42) // Unit 타입은 오직 Unit이라는 값만 포함
+    println(u1) 
+    val u2: println(0) // 타입 추론
+    println(u2)
+  }
+  // 출력
+  kotlin.Unit
+  42
+  kotlin.Unit
+  0
+  kotlin.Unit
+  ```
+
+### 식과 if문
+* if는 식을 만들 수 있고, if의 결과를 변수에 대입할 수 있다.
+  1. 5가 할당된다.
+  2. 코드 블록 안에서 a라는 변수를 정의했고, if 쪽 블록의 마지막에 있는 식의 결과가 if 전체의 결과가 되기 때문에 11과 42를 더한 53이 되며 a는 임시적 변수로 코드 블록을 벗어나면 접근 할 수 없고 영역을 벗어나면 a도 버려진다.
+  3. Unit이 할당된다.
+  ```
+  fun main() {
+    val result1 = if (11 > 42) 9 else 5 // [1]
+    val result2 = if (1 < 2) { // [2]
+      val a = 11
+      a + 42
+    } else 42
+    
+    val result3 = // [3]
+      if ('x' < 'y')
+        println("x < y")
+      else
+        println("x > y")
+
+    println(result1)
+    println(result2)
+    println(result3)
+  }
+  // 출력
+  x < y
+  5
+  53
+  kotlin.Unit
+  ```
+
+### 식과 연산자
+* 증가 연산자, 전위 연산자, 후위 연산자의 경우 문처럼 보일지 몰라도 실제로는 식이다.
