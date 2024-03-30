@@ -384,3 +384,35 @@
     ```
 * vararg 키워드는 파라미터 목록에서 어떤 위치에 있든 선언할 수 있지만 마지막 파리미터로 선언하는 것이 편하며 vararg로 선언된 인자가 최대 하나만 있어야 한다.
 * vararg를 통해서 임의의 개수만큼 인자를 전달할 수 있고, 모든 인자는 지정한 타입에 속한다.
+
+### Array와 List
+* Array와 List는 비슷해 보이지만 전혀 다르게 구현되는데 List는 일반적인 라이브러리 클래스지만 Array는 특별한 저수준 지원이 필요하며 자바같은 다른 언어와 호환되야 하는 코틀린의 요구사항에 의해 생겨난 타입이다.
+* 일상적인 프로그래밍에서 간단한 시퀀스가 필요하면 List를 서드파티 API가 요구하거나 vararg을 다뤄야하는 경우에만 Array를 써야한다.
+* vararg가 필요한 위치에 임의의 타입 Array를 넘길 수 있으며, Array를 만들기 위해서는 arrayOf()를 사용한다.
+* Array를 인자 목록으로 변환하고 싶으면 스프레드 연산자(*)를 사용한다.
+  ```
+  fun main() {
+    val array = intArrayOf(4, 5)
+    intArrayOf(*array) // [1]
+    intArrayOf(array) // [2] 컴파일 에러 발생
+		}
+  ```
+* 스프레드 연산자는 vararg로 받은 파라미터를 다시 다른 vararg를 요구하는 함수에 전달할 때 특히 유용하다.
+  ```
+  fun first(vararg numbers: Int): String {
+				var result = ""
+    for (i in numbers) {
+      result += "[$i]"
+    }
+    return result
+  }
+  
+  fun second(vararg numbers: int) = first(*numbers)
+
+  fun main() {
+    second(7, 9, 32)
+  }
+  ```
+
+### 명령줄 인자
+* 명령줄에서 프로그램을 시작할 때 프로그램에서 원하는만큼 인자를 전달할 수 있으며 main() 함수에 미리 정해진 파라미터를 지정해야 한다.
