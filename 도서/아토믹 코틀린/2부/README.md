@@ -241,3 +241,146 @@
 * 파라미터를 입력 받아서 결괏값만 만들어내고 다른 일을 하지 않는 함수를 사용하면 설계가 자연스럽게 더 나아진다.
 
 ## 아톰 23. 예외
+### 예외
+* 예외 상황은 현재 함수, 영역의 진행을 막으며 문제가 발생하면 계속 처리를 진행할 수 없게되서 처리를 중단하고 적절한 조치를 취할 수 있는 다른 맥락으로 문제를 넘겨야 한다.
+* 예외적인 상황과 일반적인 문제(문제를 처리하는데 충분한 정보가 현재 맥락에 존재하는 경우)를 구분하는 것이 중요한데 예외 상황에선 처리할 수 없기 때문에 문제를 바깥쪽 맥락으로 내보내는 `예외를 던지면` 발생한다.
+* 예외는 `오류가 발생한 지점에서 던져지는 객체`이다.
+* String을 Int로 변환하는 toInt()를 하면 아래와 같이 발생된다.
+  * [1]에서 예외가 발생한다.
+  * 예외가 던져지면 실행 경로가 중단되고 예외 객체는 현재 문맥을 벗어난다.
+  * 코틀린은 코드를 수정해야 한다는 예외에 대한 정보를 표시하고 프로그램을 종료시킨다.
+  * 예외를 잡아내지 않으면 프로그램이 중단되면서 상세 정보가 있는 스택 트레이스가 출력된다.
+  * 스택 트레이스는 예외가 발생한 파일, 위치와 같은 상세 정보를 표시한다.
+    ```
+    fun erroneousCode() {
+    var i = "1$".toInt() // [1]
+    }
+    fun main() {
+        erroneousCode()
+    }
+    // 출력
+    Exception in thread "main" java.lang.NumberFormatException: For input string: "1$"
+    at java.base/java.lang.NumberFormatException.forInputString(NumberFormatException.java:67)
+    at java.base/java.lang.Integer.parseInt(Integer.java:668)
+    at java.base/java.lang.Integer.parseInt(Integer.java:786)
+    at com.example.kotilnbasic/com.example.kotilnbasic.MainTestKt.erroneousCode(MainTest.kt:86)
+    at com.example.kotilnbasic/com.example.kotilnbasic.MainTestKt.main(MainTest.kt:89)
+    at com.example.kotilnbasic/com.example.kotilnbasic.MainTestKt.main(MainTest.kt)
+    ```
+  * 코틀린은 변환할 수 없는 문자열이 들어있으면 Null을 반환하는 String.toIntOrNull() 함수를 제공한다.
+    ```
+    fun main() {
+        "1$".toIntOrNull()
+    }
+    ```
+* 자세한 오류 메세지가 포함된 구체적인 예외를 던지면 유용하다.
+    ```
+    fun averageIncome(income: Int, months: Int) = 
+        if (months == 0)
+            throw IllegalArgumentException("Months can't be zero")
+        else
+            income / months
+        
+    fun main() {
+        averageIncome(5000, 0)
+    }
+    ```
+
+> 예외의 목표는 향후 애플리케이션을 더 쉽게 지원할 수 있도록 가장 유용한 메시지를 제공하는 것이다.
+
+## 아톰 24. 리스트
+### 리스트
+* List는 컨테이너, 다른 객체를 담는 객체에 속하며 컨테이너는 컬렉션이라고 부른다.
+* List는 표준 코틀린 패키지에 들어가 있어서 import할 필요가 없다.
+  * sorted(), reverse()는 새로운 List을 돌려준다.
+  * 함수 이름을 sort라고 붙이면 원본 List를 직접(인플레이스) 바꾼다.
+    ```
+    fun main() {
+        val ints = listOf(99, 3, 5, 7, 11, 13)
+        val doubles = listOf(1.1, 2.2, 3.3, 4.4)
+        val strings = listOf("Twas", "Brillig", "And", "Slithy", "Toves")
+        strings.sorted() // 정렬
+        strings.reverse() // 순서 역전
+    }
+    ```
+
+### 파라미터화한 타입
+* 타입 추론은 코드를 더 깜글하고 읽기 쉽게 만들어주기 때문에 사용하는 것이 좋은 습관이다.
+* 코틀린이 타입 추론을 하지 못할 때는 직접 타입을 명시해야한다.
+  * 코틀린은 초기화 값을 사용해 타입을 추론한다.
+  * 명시적인 타입을 써서 정의한 경우 홑화살괄호(<>)는 타입 파라미터를 표시한다.
+    ```
+    fun main() {
+        // 타입을 추론
+        val numbers = listOf(1, 2, 3)
+        val strings = listOf("one", "two", "three")
+        // 타입을 명시
+        val numbers2: List<Int> = listOf(1, 2, 3)
+        val strings2: List<String> = listOf("one", "two", "three")
+    }
+    ```
+* 반환값의 타입이 타입 파라미터를 포함할 수도 있다.
+  * 단순히 List라고 적으면 오류를 표시하기 때문에 타입 파라미터를 반드시 명시해야 한다.
+  * 반환 타입을 명시해 의도를 분명히 적으면, 코틀린은 함수가 반환하는 값의 타입이 의도와 같게 되도록 강제해준다.
+    ```
+    // 반환 타입을 추론
+    fun inferred(p: Char, q: Char) = listOf(p, q)
+    // 반환 타입을 명시
+    fun explicit(p: Char, q: Char): List<Char> = listOf(p, q)
+    ```
+
+### 읽기 전용과 가변 List
+* 가변 List는 필요하다고 명시적으로 표시해야만 얻을 수 있다.
+* listOf()는 읽기 전용 리스트를 만들어내고 mutableListOf()는 변경할 수 있는 MutableList를 반환한다.
+    ```
+    fun main() {
+        val list = listOf(1, 2, 3)
+        val mutalbeList = mutableListOf<Int>()
+        mutalbeList.add(1)
+        mutalbeList.addAll(listOf(2, 3))
+        mutalbeList += 4
+        mutalbeList += listOf(5, 6)
+    }
+    ```
+* MutableList도 List로 취급할 수 있지만 이 경우 내용을 변경할 수 없으며 그 반대의 경우 List를 MutableList로 취급할 수 없다.
+  * 리턴 시 읽기 전용 List로 바뀐다.
+  * 내부 구현을 MutableList로 유지하면서 참조를 유지했다가 가변 Lis에 대한 참조를 통해 원소를 변경하면 내부를 변경할 수 있다.
+    ```
+    fun getList(): List<Int> {
+        return mutableListOf(1, 2 ,3)
+    }
+
+    fun main() {
+        val first = getList()
+        val second = first
+
+        first += 2 // second는 변경될 수 없지만 first가 변경되면 참조기 때문에 변경된다.
+    }
+    ```
+
+### +=의 비밀
+* += 연산자를 쓰면 불변 리스트가 마치 가변 리스트인 것처럼 보인다.
+  * 불변성을 위배하는 것처럼 보이지만 아니다.
+  * list가 var라서 이런 코드가 가능하다.
+    ```
+    fun main() {
+        var list = listOf('X') // 불변 리스트
+        list += 'Y' // 가변 리스트처럼 보임
+    }
+    ```
+* += 동작은 다른 컬렉션에서도 마찬가지로 이로 인해 발생할 수 있는 혼동을 방지하는 것도 식별자를 정의할 때 `var보다는 val을 써야하는 이유`가 된다.
+
+## 아톰 25. 가변 인자 목록
+### 가변 인자 목록
+* vararg는 가변 인자 목록(variable argument list)을 줄일 말로 vararg 키워드를 사용하면 listOf처럼 임의의 길이로 인자를 받을 수 있는 함수를 정의할 수 있다.
+    ```
+    fun v(s: String, vararg d: Double) {}
+
+    fun main() {
+        v("abc", 1.0, 2.0)
+        v("def", 1.0, 2.0, 3.0, 4.0)
+        v("ghi", 1.0, 2.0, 3.0, 4.0, 5.0, 6.0) 
+    }
+    ```
+* vararg 키워드는 파라미터 목록에서 어떤 위치에 있든 선언할 수 있지만 마지막 파리미터로 선언하는 것이 편하며 vararg로 선언된 인자가 최대 하나만 있어야 한다.
+* vararg를 통해서 임의의 개수만큼 인자를 전달할 수 있고, 모든 인자는 지정한 타입에 속한다.
