@@ -416,3 +416,242 @@
 
 ### 명령줄 인자
 * 명령줄에서 프로그램을 시작할 때 프로그램에서 원하는만큼 인자를 전달할 수 있으며 main() 함수에 미리 정해진 파라미터를 지정해야 한다.
+  * 파라미터 이름은 전통적으로 args로 짓고(다른 이름도 상관X), 타입은 Array<String>(String으로 이뤄진 Array)이어야 한다.
+  ```
+  fun main(args: Array<String>) {
+    for (a in args) {
+        pringln(a)
+    }
+  }
+  ```
+* 인텔리제이를 사용하면 실행 설정을 변경해서 프로그램에 인자를 전달할 수 있다.
+* kotilnc 컴파일러를 사용해 명령줄 프로그램을 생성할 수 있다.
+  * kotilnc 미설치 시 코틀린 기본 사이트가서 프로그램 설치
+  ```
+  // 기본 실행
+  kotilnc MainArgs.kt
+  // 인자 주입 실행
+  kotilnc MainArg.kt hamster 42 3.14159
+  ```
+* 코틀린이 제공하는 변환 함수를 사용해서 String 파라미터를 원하는 타입으로 변경할 수 있다.
+  * [1]의 경우 충분한 인자가 주어지지 않으면 프로그램 종료
+  * [2], [3]의 경우 변환할 수 없는 값이 주어진 경우 런타임 오류가 발생한다.
+  ```
+  fun main(args: Array<String>) {
+    if (args.size < 3) return [1]
+    val first = args[0]
+    val second = args[1].toInt() [2]
+    val third = args[2].toFloat() [3]
+    pringln("$first $second $third")
+  }
+  ```
+* main
+
+## 아톰 26. 집합
+### Set
+* Set은 각각의 값이 오직 하나만 존재할 수 있는 컬렉션이다.
+* 일반적인 Set 연산은 in이나 contains()를 사용해 원소인지 검사하는 것이다.
+  ```
+  fun main() {
+    val intSet = setOf(1, 1, 2, 3, 9, 9, 4)
+    // [1] 중복이 존재하지 않는다.
+    // 출력 [1, 2, 3, 9, 4]
+    println(intSet)
+    // [2] 원소의 순서는 중요하지 않다.
+    // 출력 true
+    println(setOf(1, 1, 2, 3, 9, 9, 4) == setOf(9, 4, 3, 2, 1));
+    // [3] in 키워드를 통한 원소인지 검사
+    // 출력 true
+    println(9 in intSet)
+    // 출력 false
+    println(99 in intSet)
+    // [4] 이 집합이 다른 집합에 포함하는지 여부
+    // 출력 true
+    println(intSet.containsAll(setOf(1, 9, 2)))
+    // [5] 합집합
+    // 출력 [3, 4, 5, 6, 1, 2, 9] 
+    println(setOf(3, 4, 5, 6).union(setOf(1, 2, 3, 4, 5, 6, 9)))
+    // [6] 교집합
+    // 출력 [1, 2]
+    println(intSet intersect setOf(0, 1, 2, 7, 8))
+    // [7] 차집합
+    // 출력 [2, 3, 4]
+    println(intSet subtract setOf(0, 1, 9, 10))
+    println(intSet - setOf(0, 1, 9, 10))
+  }
+  ```
+* List에서 중복을 제거하려면 Set으로 변환하면 된다.
+  ```
+  fun main() {
+    val list = listOf(3, 3, 2, 1, 3)
+    // 출력 [3, 2, 1]
+    println(list.toSet())
+    // 출력 [3, 2, 1]
+    println(list.distinct())
+    // 출력 [a, b, c]
+    println("abbcc".toSet())
+  }
+  ```
+* setOf는 읽기 전용 집합으로 불변이므로 가변이 필요한 경우 mutableSetOf()를 사용한다.
+  ```
+  fun main() {
+    val mutableSet = mutableSetOf<Int>()
+    mutableSet += 42
+    mutableSet.add(42)
+    // 출력 [42]
+    println(mutableSet)
+    mutableSet -= 42
+    mutableSet.remove(42)
+    // 출력 []
+    println(mutableSet)
+  }
+  ```
+
+## 아톰 27. 맵
+### Map
+* Map은 키와 값을 연결하고 키가 주어지면 그 키와 연결된 값을 찾아준다.
+* 키-값 쌍을 mapOf()에 전달해 Map을 만들 수 있고 키와 값을 분리하려면 to를 사용한다.
+  ```
+  fun main() {
+    // [1] Map 생성 및 키와 값 분리
+    val constants = mapOf(
+      "Pi" to 3.141,
+      "e" to 2.718,
+      "phi" to 1.618
+    )
+    // [2] 키에 해당하는 값을 찾는다.
+    // 출력 2.718
+    println(constants["e"])
+    // [3] 키-값 쌍을 이터레이션한다.
+    // 출력 Pi=3.141, e=2.718, phi=1.618,
+    var s = ""
+    for (entry in constants) {
+        s += "${entry.key}=${entry.value}, "
+    }
+    println(s)
+    // [4] 이터레이션을 하면서 키와 값을 분리한다.
+    // 출력 Pi=3.141, e=2.718, phi=1.618,
+    var s = ""
+    for ((key, value) in constants) {
+        s += "$key=$value, "
+    }
+    println(s)
+  }
+  ```
+* 일반 Map은 읽기 전용으로 불변이므로 가변은 MutableMap을 사용한다.
+  ```
+  fun main() {
+    val m = mutableMapOf(5 to "five", 6 to "six")
+    // 출력 five
+    println(m[5])
+    m += 4 to "four"
+    // 출력 {5=five, 6=six, 4=four}
+    println(m)
+  }
+  ```
+* mapOf(), mutableMapOf()는 원소가 전달된 순서를 유지해주지만 다른 Map 타입에서는 순서가 보장되지 않을 수 있다.
+* 읽기 전용 Map은 상태 변경을 허용하지 않는다.
+  * [1]은 키-값 쌍이 아니라 에러가 발생한다. 
+  * [2]는 기존 Map의 상태 값을 변경하는 방법으로 불변이라서 실패한다.
+  * [3]은 + 연산으로 기존 맵 원소와 더해진 원소를 포함하는 새 Map을 만들고 원래의 Map에는 영향을 미치지 않는다, 읽기 전용 Map에서 원소를 추가하는 유일한 방법은 새로운 Map을 만드는 것뿐이다.
+  ```
+  fun main() {
+    val m = mapOf(5 to "five", 6 to "six")
+    // [1] 실패
+    m[5] = "five"
+    // [2] 실패
+    m += 4 to "four"
+    // [3] 성공
+    m + (4 to "four")
+  }
+  ```
+* 주어진 키에 해당하는 원소가 없으면 null을 반환한다.
+  * null이 될 수 없는 결과를 원하면 getValue()를 사용할 경우 NosuchElementException이 발생한다.
+  * 일반적으로 `getOrDefault()가 null 반환이나 예외를 던지는 함수보다 나은 대안`이다.
+* 클래스 인스턴스를 Map의 값으로 저장할 수도 있고, 클래스 인스턴스를 Map의 키로 사용할 수도 있다.
+  ```
+  class Contact(val name: String, val phone: String) {
+      override fun toString(): String {
+          return "Contact('$name, '$phone')"
+      }
+  }
+  
+  fun main() {
+      val miffy = Contact("Miffy", "1-234-567890")
+      val cleo = Contact("Cleo", "098-765-4321")
+      val contacts = mapOf(miffy.phone to miffy, cleo.phone to cleo)
+      // 출력 {1-234-567890=Contact('Miffy, '1-234-567890'),   098-765-4321=Contact('Cleo, '098-765-4321')}
+      println(contacts)
+  }
+  ```
+* Map은 간단하고 작은 데이터베이스와 비슷하며 키와 값을 연관(연결)시켜주기 때문에 연관 배열이라고 부르기도 한다.
+
+> 완전한 기능을 갖춘 데이터베이스와 비교하면 맵의 기능은 아주 제한적이지만 Map은 매우 유용하며 데이터베이스에 비해서 훨씬 더 효율적이다.
+
+## 아톰 28. 프로퍼티 접근자
+### Property(프로퍼티)
+* 프로퍼티 이름을 사용해 프로퍼티를 읽고 대입 연산자(=)를 사용해 가변 프로퍼티에 값을 대입한다.
+* 코틀린은 `함수를 호출해 프로퍼티 읽기와 쓰기 연산을 수행`한다.
+* 프로퍼티 접근자를 작성해서 프로퍼티 읽기와 쓰기 연상을 커스텀화하는 방법이 있다.
+  * 프로퍼티 값을 얻기 위해 사용하는 접근자를 게터(getter)라고 하며 프로퍼티 정의 바로 다음에 get()을 정의하면 정의할 수 있다.
+  * 가변 프로퍼티를 갱신하기 위해 사용하는 접근자는 세터(setter)라고 하며 프로퍼티 정의 바로 다음에 set()을 정의하면 정의할 수 있다.
+  * 코틀린은 들여쓰기를 신경쓰지 않는다.
+  ```
+  class Default {
+    var i: Int = 0
+      get() {
+        return field
+      }
+      set(value) {
+        field = value
+      }
+  }
+
+  fun main() {
+    val d = Default()
+    // 출력 0
+    println(get())
+    set(2)
+    // 출력 2
+    println(get())
+  }
+  ```
+  * setter를 private하고 getter는 pulic으로 할수 있다.
+  ```
+  class Counter {
+    val value: Int = 0
+      private set
+    fun inc() = value++
+  }
+  ```
+  * 일반적으로 프로퍼티는 값을 필드에 저장하지만 필드가 없는 프로퍼티를 정의할 수도 있다.
+  ```
+  class Cage(private val maxCapacity: Int) {
+    private val hamster = mutableListOf<Hamster>()
+    val capacity: Int
+      get() = maxCapacity - hamsters.size
+    val full: Boolean
+      get() = hamsters.size == maxCapacity
+    
+    fun put(hamster: Hamster): Boolean = 
+      if (full)
+        false
+      else {
+        hamster += hamster
+        true
+      }
+    fun take(): Hamseter = hamsters.removeAt(0)
+  }
+  ```
+  * 프로퍼티를 사용한 코드가 가독성이 좋지만 모든 함수를 프로퍼티로 변환하지는 말고 어떻게 읽히는지 살펴봐야한다.
+  ```
+  class Cage(private val maxCapacity: Int) {
+    private val hamster = mutableListOf<Hamster>()
+    fun capacity: Int = maxCapacity - hamsters.size
+    fun full: Boolean = hamsters.size == maxCapacity
+  }
+  ```
+  * 코틀린 스타일 가이드에선 계산 비용이 많이 들지 않고 객체 상태가 바뀌지 않는 한 같은 결과를 내놓는 함수의 경우 프로퍼티를 사용하는 편이 낫다고 안내한다.
+
+> 프로퍼티 접근자는 프로퍼티에 대한 일종의 보호 수단을 제공하며, 많은 객체지향언어가 프로퍼티에 대한 접근을 제어하기 위해 물리적인 필드를 private으로 정의하는 방식에 의존한다.
+> 프로퍼티 접근자를 사용하면 필드 접근과 같은 방식으로 쉽게 프로퍼티에 접근하도록 허용하면서 동시에 프로퍼티 접근을 제어하거나 변경할 수 있는 코드를 쉽게 추가할 수 있다.
