@@ -404,7 +404,6 @@
 * Triple 클래스는 최대 세 가지 값까지만 묶고, 더 많은 값을 저장하거나 코드에서 Pair, Triple을 많이 사용한다면 상황에 맞는 특별한 클래스를 작성해야 하는데 data 클래스는 자동으로 구조 분해 선언을 지원한다.
   * Pair, Triple을 반환하는 것보다 데이터 클래스인 Computation을 반환하는 것이 나으면 결괏값의 타입에 이름을 붙이는 것은 중요한 일이다.
   * Computation을 사용하면 정보를 추가하거나 제거하는 것이 쉽다.
-  * 
   ```
   data class Computation(
     val data: Int,
