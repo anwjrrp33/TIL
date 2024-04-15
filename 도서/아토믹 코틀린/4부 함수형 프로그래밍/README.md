@@ -726,3 +726,161 @@
   * 중간 연산은 결과가 다른 Sequence를 내놓으며, filter(), map()은 중간 연산이다.
   * 최종 연산은 Sequence가 아닌 값을 내놓으며 결괏값을 얻기위해 최종 연산은 저장된 모든 계산을 수행한다.
 * Sequence는 중간 연산을 저장해두기 때문에 각 연산을 원하는 순서로 호출할 수 있고 그에 따라 지연 연산이 발생한다.
+* Sequence는 한 번만 이터레이션할 수 있으며 이터레이션을 또 시도하면 예외가 발생하기 때문에 여러 번 처리할 때는 우선 Collection 타입으로 변환해야 한다.
+* takeIf() 대신 항상 일반 if를 쓸 수 있지만 식별자가 추가로 필요하기 때문에 지저분해 보여서 takeIf() 쪽이 더 함수형 표현이고 호출 연쇄 중간에 자연스럽게 사용할 수 있다.
+
+## 아톰 52. 지역 함수
+### 지역 함수
+* 다른 함수 안에 정의된 이름 붙은 함수를 `지역 함수`라고 한다.
+* 지역 함수를 통해서 반복되는 코드를 추출해서 중복을 줄일 수 있고, 자신이 속함 함수 내부에서만 지역 함수를 볼 수 있어서 공간을 오염시키지 않는다.
+  ```
+  fun main() {
+    val logMsg = StringBuilder()
+
+    fun log(message: String) = logMsg.appendLine(message)
+
+    log("Starting computation")
+    val x = 42
+    log("Computation result: $x")
+
+    logMsg.toString eq """
+      Starting computation
+      Computation result: 42
+    """
+  }
+  ```
+* 지역 함수는 `클로저`이며 자신을 둘러싼 환경의 var, val을 포획하는데 포획을 쓰지 않으면 주변 환경의 값을 별도의 파라미터로 전달 받아야 한다.
+* 지역 함수는 확장 함수로 선언해서 지역 확장 함수로 정의할 수 있다.
+  ```
+  fun main() {
+    fun String.exclaim() = "$this!"
+    "Hello".exclaim() eq "Hello!"
+    "Hello".exclaim() eq "Hallo!"
+    "Bonjour".exclaim() eq "Bonjour!"
+    "Ciao".exclaim() eq "Ciao!"
+  }
+  ```
+* 함수 참조를 사용해 지역 함수를 참조할 수 있다.
+  ```
+  class Session(
+    val title: String,
+    val speaker: String 
+  )
+  
+  val sessions = listOf(Session("Kotlin Coroutines", "Roman Elizarov"))
+
+  val favoriteSpeakers = setOf("Roman Elizarov")
+
+  fun main() {
+    fun interesting(session: Session): Boolean {
+      if (session.title.contains("Kotiln") && session.speaker in favoriteSpeakers) {
+        return true
+      }
+      // ... 추가 검사
+
+      return false
+    }
+    sessions.any(::interesting) eq true
+  }
+  ```
+* return 식이 있으면 함수를 람다로 정의하기 어려운데 `익명 함수`를 사용해서 이런 문제를 피할 수 있다.
+  * fun 키워드를 사용해 정의한다.
+  * [1] 익명 함수는 이름이 없는 일반 함수처럼 보인다.
+  * `람다가 너무 복잡해서 읽기 어렵다면 지역 함수나 익명 함수로 대신`한다.
+  ```
+  fun main() {
+    sessions.any(
+      fun(session: Session): Boolean {    // [1]
+        if (session.title.contains("Kotlin") &&
+          session.speaker in favoriteSpeakers) {
+          return true
+        }
+        // ... 추가 검사
+        return false
+      }) eq true
+  }
+  ```
+
+### 레이블
+* 레이블을 통해서 return할 때 반환 값이 있으면 호출된 함수로 이동한다.
+  * [1] return은 main 함수를 끝낸다.
+  * [2] [1]에서 main 함수를 종료해 출력되지 않는다.
+  ```
+  fun main() {
+    val list = listOf(1, 2, 3, 4, 5)
+    val value = 3
+    var result = ""
+    list.forEach {
+      result += "$it"
+      if (it == value) {
+        result eq "123"
+        return                   // [1]
+      }
+    }
+    result eq "Never gets here"  // [2]
+  }
+  ```
+* 람다를 둘러싼 함수가 아닌 `람다에서 반환해야하면 레이블이 붙은 return 사용`한다.
+  ```
+  fun main() {
+    val list = listOf(1, 2, 3, 4, 5)
+    val value = 3
+    var result = ""
+    list.forEach {
+      result += "$it"
+      if (it == value) return@forEach
+    }
+    result eq "12345"
+  }
+  ```
+* 람다 앞에 레이블@을 넣으면 새 레이블을 넣을 수 있으며 레이블 이름은 아무 이름이나 사용 가능하다.
+
+### 지역 함수 조작하기
+* var, val에 람다나 익명 함수를 저장할 수 있고, 식별자를 사용해 해당 함수를 호출할 수 있다.
+* 지역 함수 저장은 함수 참조를 사용한다.
+  * 
+  ```
+  fun first(): (Int) -> Int {
+    val func = fun(i: Int) = i + 1
+    func(1) eq 2
+    return func
+  }
+  
+  fun second(): (String) -> String {
+    val func2 = { s: String -> "$s!" }
+    func2("abc") eq "abc!"
+    return func2
+  }
+  
+  fun third(): () -> String {
+    fun greet() = "Hi!"
+    return ::greet
+  }
+  
+  fun fourth() = fun() = "Hi!"
+  
+  fun fifth() = { "Hi!" }
+  
+  fun main() {
+    // 지역 함수
+    val funRef1: (Int) -> Int = first()
+    val funRef2: (String) -> String = second()
+    val funRef3: () -> String = third()
+    val funRef4: () -> String = fourth()
+    val funRef5: () -> String = fifth()
+    // 함수 참조
+    funRef1(42) eq 43
+    funRef2("xyz") eq "xyz!"
+    funRef3() eq "Hi!"
+    funRef4() eq "Hi!"
+    funRef5() eq "Hi!"
+    // 반환된 함수 호출
+    first()(42) eq 43 
+    second()("xyz") eq "xyz!"
+    third()() eq "Hi!"
+    fourth()() eq "Hi!"
+    fifth()() eq "Hi!"
+  }
+  ```
+
+## 아톰 53. 리스트 접기
