@@ -884,3 +884,109 @@
   ```
 
 ## 아톰 53. 리스트 접기
+### 리스트 접기
+* fold()는 리스트의 모든 원소를 순서대로 결괏값을 하나 만든다.
+  * 보통 sum(), reverse()를 fold()를 통해 구현한다.
+  * 초깃값을 받고, 지금까지 누적된 값과 현재 원소에 대해 `연산을 연속적으로 적용`시킨다.
+  * 원소가 없을 때 연산을 중단하고 마지막 값을 반환한다.
+  ```
+  fun main() {
+    val list = listOf(1, 10, 100, 1000)
+
+    list.fold(0) { sum, n ->
+      sum + n
+    } eq 1111
+  }
+  ```
+* fold()는 원소를 왼쪽에서 오른쪽으로 처리하고, foldRight()는 원소를 오른쪽에서 시작해 왼쪽 방향으로 처리한다.
+* reduce(), reduceRight()는 첫 번쨰 원소와 마지막 원소를 초깃값으로 사용한다.
+  ```
+  fun main() {
+    val chars = "A B C D E".split(" ")
+    chars.fold("*") { acc, e -> "$acc $e" } eq "* A B C D E"
+    chars.foldRight("*") { e, acc -> "$acc $e" } eq "* E D C B A"
+    chars.reduce { acc, e -> "$acc $e" } eq "A B C D E"
+    chars.reduceRight { e, acc -> "$acc $e" } eq "E D C B A"
+  }
+  ```
+* runningFold(), runningReduce()는 과정에서 계산되는 모든 중간 단계 값을 포함하는 List를 만든다.
+  * runningFold()는 초깃값을 저장하고, 중간 단계 값을 추가 저장한다.
+  * runningReduce()는 각 sum의 값을 저장한다.
+  ```
+  fun main() {
+    val list = listOf(11, 13, 17, 19)
+    list.fold(7) { sum, n ->
+      sum + n
+    } eq 67
+    list.runningFold(7) { sum, n ->
+      sum + n
+    } eq "[7, 18, 31, 48, 67]"
+    list.reduce { sum, n ->
+      sum + n
+    } eq 60
+    list.runningReduce { sum, n ->
+      sum + n
+    } eq "[11, 24, 41, 60]"
+  }
+  ```
+
+## 아톰 54. 재귀
+### 재귀
+* 재귀는 함수 안에서 함수 자신을 호출하는 프로그래밍 기법이다.
+* 꼬리 재귀는 일부 재귀 함수에 명시적으로 적용할 수 있는 최적화 방법이다.
+* 재귀 함수는 이전 재귀 호출의 결과를 활용하는데 팩토리얼이 일반적인 예다.
+  * factorial(1)은 1이다.
+  * factorial(n)은 n * factorial(n - 1)이다.
+  * 코드를 읽기 쉽지만 처리 비용이 많이 든다.
+  ```
+  fun factorial(n: Long): Long {
+    if (n <= 1) return 1
+    return n * factorial(n - 1)
+  }
+
+  fun main() {
+    factorial(5) eq 120
+    factorial(17) eq 355687428096000
+  }
+  ```
+* 함수를 호출하면 함수와 인자에 대한 정보가 호출 스택에 저장되며 예외를 던져서 코틀린이 스택 트레이스를 표시하면 호출 스택의 모습을 볼 수 있다.
+  ![alt text](image-2.png)
+  ```
+  fun illegalState() {
+    throw IllegalStateException()
+  }
+  
+  fun fail() = illegalState()
+  
+  fun main() {
+    fail()
+  }
+  /* 예외 발생
+  Exception in thread "main" java.lang.IllegalStateException
+    at com.example.kotilnbasic/com.example.kotilnbasic.CallStackKt. illegalState(CallStack.kt:4)
+    at com.example.kotilnbasic/com.example.kotilnbasic.CallStackKt.fail (CallStack.kt:7)
+    at com.example.kotilnbasic/com.example.kotilnbasic.CallStackKt.main (CallStack.kt:10)
+    at com.example.kotilnbasic/com.example.kotilnbasic.CallStackKt.main (CallStack.kt)
+   */
+  ```
+* 재귀 함수를 호출 하면 매 재귀 호출이 호출 스택에 프레임을 추가해 StackOverflowError(호출 스택을 너무 많이 써서 스택을 쓸 수 있는 메모리가 없다는 의미)가 발생하기 쉽다.
+  * 재귀 호출 연쇄를 제때 끝내지 않아서 StackOverflowError가 발생하면 이를 무한 재귀라고 한다.
+  * 재귀 함수가 계속 자신을 호출해 스택을 채운다.
+  ![alt text](image-3.png)
+  ```
+  fun recurse(i: Int): Int = recurse(i + 1)
+
+  fun main() {
+    recurse(1)
+  }
+  /* 예외 발생
+  Exception in thread "main" java.lang.StackOverflowError
+  	at com.example.kotilnbasic/com.example.kotilnbasic.CallStackKt.recurse  (CallStack.kt:3)
+  	at com.example.kotilnbasic/com.example.kotilnbasic.CallStackKt.recurse  (CallStack.kt:3)
+  	at com.example.kotilnbasic/com.example.kotilnbasic.CallStackKt.recurse  (CallStack.kt:3)
+  */
+  ```
+  * 무한 재귀 없이 재귀 호출을 아주 많이해도 StackOverflowError가 발생한다.
+  * StackOverflowError을 막기위해서 재귀 대신 이터레이션을 택해야 한다.
+* `호출 스택 넘침을 막기 위해 꼬리 재귀라는 기법을 사용`한다.
+  * 
