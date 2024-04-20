@@ -989,4 +989,53 @@
   * 무한 재귀 없이 재귀 호출을 아주 많이해도 StackOverflowError가 발생한다.
   * StackOverflowError을 막기위해서 재귀 대신 이터레이션을 택해야 한다.
 * `호출 스택 넘침을 막기 위해 꼬리 재귀라는 기법을 사용`한다.
-  * 
+  * 꼬리 재귀의 목표는 호출 스택의 크기를 줄이는 것이다.
+  * 꼬리 재귀를 사용하면 호출 스택이 한 함수 호출로 줄어든다.
+  ![alt text](image-4.png)
+* 꼬리 재귀는 tailrec 키워드를 사용해서 만들며 올바른 조건하에 재귀 호출을 이터레이션으로 변환해 호출 스택 비용을 제거해준다.
+* 꼬리 재귀는 컴파일러가 수행하는 최적화지만 모든 재귀 함수에 적용할 수는 없다.
+* tailrec을 성공적으로 사용할려면 재귀가 마지막 연산이어야 하는데 결괏값을 즉시 반환해야한다는 뜻이다.
+
+### 피보나치와 재귀
+* 피보나치는 각 피보나치의 수는 이전 두 피보나치 수의 합이다.
+* 피보나치의 수는 재귀적으로 표현할 수 있다.
+  ```
+  fun fibonacci(n: Long): Long {
+    return when (n) {
+      0L -> 0
+      1L -> 1
+      else ->
+        fibonacci(n - 1) + fibonacci(n - 2)
+    }
+  }
+  
+  fun main() {
+    fibonacci(0) eq 0
+    fibonacci(22) eq 17711
+    // 시간이 아주 오래 걸린다
+    // fibonacci(50) eq 12586269025
+  }
+  ```
+* 꼬리 재귀를 사용하면 계산 효율이 좋아진다.
+  ```
+  fun fibonacci(n: Int): Long {
+    tailrec fun fibonacci(
+      n: Int,
+      current: Long,
+      next: Long
+    ): Long {
+      if (n == 0) return current
+      return fibonacci(
+        n - 1, next, current + next)
+    }
+    return fibonacci(n, 0L, 1L)
+  }
+  
+  fun main() {
+    (0..8).map { fibonacci(it) } eq
+      "[0, 1, 1, 2, 3, 5, 8, 13, 21]"
+    fibonacci(22) eq 17711
+    fibonacci(50) eq 12586269025
+  }
+  ```
+* 디폴트 인자는 사용자가 그 디폴트 값 대신 다른 값을 넘겨도 된다는 점을 암시한다.
