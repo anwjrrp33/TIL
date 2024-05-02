@@ -346,3 +346,39 @@
     fun g() = "ch = $ch; f() = ${f()}" // 다른 abstract 멤버를 호출
   }
   ```
+* 인터페이스가 함수 구현을 포함할 수 있어서 내부에 정의된 프로퍼티가 상태를 바꿀 수 없는 경우에는 인터페이스도 프로퍼티에 커스텀 게터를 포함할 수 있다.
+  ```
+  interface PropertyAccessor {
+    val a: Int
+      get() = 11
+  }
+
+  class Impl: PropertyAccessor
+
+  fun main() {
+    Impl().a eq 11
+  }
+  ```
+* 추상 클래스가 기능은 강력하지만, `클래스는 오직 한 기반 클래스만 상속할 수 있고 인터페이스는 다중 상속을 지원`한다.
+  * 최초 자바 설계자는 다중 상속을 좋은 개념으로 보지 않았고, 여러 상태 상속이 복잡성을 증가시켜서 다중 상태 상속을 금지했다.
+  ```
+  open class Animal
+  open class Mammal : Animal()
+  open class AquaticAnimal : Animal()
+  
+  // 기반 클래스가 둘 이상이면 컴파일이 되지 않는다
+  // class Dolphin : Mammal(), AquaticAnimal()
+  ```
+  * 하지만 상태를 포함할 수 없는 인터페이스를 도입해서 다중 상속 문제를 우아하게 해결했다.
+  ```
+  interface Animal
+  interface Mammal: Animal
+  interface AquaticAnimal: Animal
+  
+  class Dolphin : Mammal, AquaticAnimal
+  ```
+* 인터페이스도 다른 인터페이스를 상속할 수 있지만 시그니처가 같은 둘 이상 동시에 상속할 때 충돌하면 직접 충돌을 해결해야 한다.
+* super 키워드를 사용해 서로 다른 기반 클래스를 함께 호출(super 뒤에 부등호로 이름을 지정)할 수도 있다.
+* 코틀린은 식별자가 같은데 타입이 다른 식으로 충돌이 일어나는 경우를 허용하지 않고 알려줄수 없다.
+
+## 아톰 61. 업캐스트
