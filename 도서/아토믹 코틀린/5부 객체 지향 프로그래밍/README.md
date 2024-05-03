@@ -408,3 +408,118 @@
   * 추가된 멤버 함수는 기반 클래스에 속해있지 않아서 업캐스트 이후에는 사용할 수 없다.
   * 업캐스트 이후에는 기반 타입의 멤버만 호출할 수 있다.
 
+## 아톰 62. 다형성
+### 다형성
+* 다형성은 여러 형태를 뜻하며 프로그래밍에선 `객체, 멤버의 여러 구현이 있는 경우를 의미`한다.
+* 다형성은 `부모 클래스가 자식 클래스를 바라볼 때 발생`한다.
+  * talk 메서드를 통해서 Pet 으로 업캐스팅 됬지만, 실제 출력은 "Pet" 으로 되어야 하지만 `기반 클래스의 메서드가 호출`된다. 
+  * 부모 클래스 참조에 대해 멤버를 호출하면 `다형성에 의해 자식 클래스에서 오버라이드한 올바른 멤버가 호출`된다.
+  ```
+  open class Pet {
+    open fun speak() = "Pet"
+  }
+  
+  class Dog : Pet() {
+    override fun speak() = "Bark!"
+  }
+  
+  class Cat : Pet() {
+    override fun speak() = "Meow"
+  }
+  
+  fun talk(pet: Pet) = pet.speak()
+  
+  fun main() {
+    talk(Dog()) eq "Bark!"
+    talk(Cat()) eq "Meow"
+  }
+  ```
+* 함수 호출을 함수 본문과 연결 짓는 작업을 바인딩이라 하며 `다형성의 경우 연산이 타입에 따라 다르게 작동해야 하기 때문에 함수 본문을 동적 바인딩을 사용해 실행 시점에 동적으로 결정`해야 한다.
+* `동적 바인딩은 정적 바인딩과 다르게 실행 시점에 타입을 결정하는 추가 로직이 성능에 영향`을 미치기 때문에 코틀린은 디폴트로 상속, 오버라이딩을 닫혀있도록 해서 사용하기 위해서 `코드에 의도를 명확`하게 드러내야 한다.
+
+> 다형성은 클래스의 관계라는 큰 그림 안에 있을 때 조화롭게 작동하며, 객체 지향 기법을 효과적으로 사용하기 위해서는 관점을 한 클래스의 멤버에만 국한되는 것이 아닌 클래스와 클래스 사이의 관계에 의존하는 보편성으로 넓혀야 한다.
+
+## 아톰 63. 합성
+> 객체 지향을 사용해야 하는 이유는 코드 재사용이다.
+
+### 합성
+* 객체 지향에서는 새 클래스를 만들어서 코드를 재사용하고, 기존 코드를 더럽히지 않고 클래스를 재사용하는 것으로 이를 달성하는 방법 중 하나가 상속이며 상속을 사용해서 기존 클래스 타입에 속하는 새 클래스를 만들고 코드를 추가한다.
+* `기존 클래스의 객체를 새 클래스 안에 생성하는 접근 방법`도 존재하는데 새 클래스가 기존 클래스들을 합성한 객체로 이뤄지기 때문에 이런 방법을 `합성`이라고 부르며 이 경우 `기본 코드의 기능을 재사용`한다.
+* 합성은 포함(has-a) 관계이며, 상속은 이다(is-a) 관계를 표현한다.
+  ```
+  interface House: Building { // 집은 건물이다.
+    val kitchen: Kitchen // 주방은 집에 포함된다.
+  }
+  ```
+* 상속은 복잡하기 때문에 중요한 개념이라고 생각하지만 `상속보다 합성을 택해라`는 말이 생겼고, `상속대신 합성을 사용해서 설계를 단순하게 만들 수 있는 지 검토해야 한다는 점`이다.
+* 합성은 뻔해 보이지만 강력하고 관련 없는 요소를 책임져야 하지만 각 요소를 분리할 때 도움이 되며 클래스의 복잡한 로직을 단순화할 수 있다.
+
+### 합성과 상속 중 선택하기
+* 합성과 상속 새 클래스에 하위 객체를 넣는다.
+  * 합성은 명시적으로 하위 객체를 선언한다.
+  * 상속은 암시적으로 하위 객체가 생긴다.
+* 합성은 기존 클래스의 기능을 제공하지만 인터페이스를 제공하지 않으며 새 클레스에서 정의한 인터페이스를 보게 되는데 합성한 객체를 완전히 감추고 싶다면 비공개(private)로 포함시키면 된다. 
+  * 사용자는 Form 구현 방식을 알 수 없는데 features 를 제거하고 변경해도 Form 을 사용하는 `코드에는 영향을 미치지 않는다.`
+  * 상속을 사용한다면 연결 관계가 명확해지기 때문에 관계를 수정하면 `연결 관계에 의존하는 모든 코드가 망가진다.`
+  ```
+  class Features {
+    fun f1() = "feature1"
+    fun f2() = "feature2"
+  }
+  
+  class Form {
+    private val features = Features()
+    fun operation1() = features.f2() + features.f1()
+    fun operation2() = features.f1() + features.f2()
+  }
+  ```
+* 때로는 새 클래스의 합성에 직접 접근하는 게 합리적인 경우도 존재하는데 이런 경우 공개(public)로 만든다.
+  * 공개를 해도 멤버 객체가 적절히 정보 은닉을 구현하고 있는 한 상대적으로 안전하다.
+  * 시스템에 따라서 멤버 객체를 공개할 때 인터페이스가 더 깔끔해질 수 있다.
+  * 하부 구현에 속하는 문제가 아니라 문제 분석의 일부분으로 내부를 노출시킨 설계는 클라이언트가 클래스를 사용하는 방법을 이해할 때 도움이 되고 코드 복잡도를 줄여준다.
+  ```
+  class Engine {
+    fun start() = trace("Engine start")
+    fun stop() = trace("Engine stop")
+  }
+  
+  class Wheel {
+    fun inflate(psi: Int) = trace("Wheel inflate($psi)")
+  }
+  
+  class Window(val side: String) {
+    fun rollUp() = trace("$side Window roll up")
+    fun rollDown() = trace("$side Window roll down")
+  }
+  
+  class Door(val side: String) {
+    val window = Window(side)
+    fun open() = trace("$side Door open")
+    fun close() = trace("$side Door close")
+  }
+  
+  class Car {
+    val engine = Engine()
+    val wheel = List(4) { Wheel() }
+    // Two door:
+    val leftDoor = Door("left")
+    val rightDoor = Door("right")
+  }
+  
+  fun main() {
+    val car = Car()
+    car.leftDoor.open()
+    car.rightDoor.window.rollUp()
+    car.wheel[0].inflate(72)
+    car.engine.start()
+    trace eq """
+      left Door open
+      right Window roll up
+      Wheel inflate(72)
+      Engine start
+    """
+  }
+  ```
+* `포함 관계는 합성으로, 이다 관계는 상속으로 표현`한다.
+
+> 다형성의 영리함으로 모든 것을 상속으로 처리해야 할 것처럼 느끼기 쉽지만 설계에 짐이 되며 상속을 우선적으로 선택하면 불필요하게 복잡해지기 때문에 합성을 먼저 시도해보는 것이 좋다.
