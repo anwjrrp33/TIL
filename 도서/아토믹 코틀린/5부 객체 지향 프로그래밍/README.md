@@ -583,6 +583,194 @@
 
 ### 관습에 의한 인터페이스
 * 확장 함수를 함수가 하나뿐인 인터페이스를 만드는 것처럼 생각할 수 있다.
+  * X, Y에 f()라는 멤버 함수가 있는 것처럼 보이지만 다형적으로 동작하지 않기 때문에 제대로 동작하게 만들려면 오버로드해야 한다.
   ```
-  
+  class X
+
+  fun X.f() {}
+
+  class Y
+
+  fun Y.f() {}
+
+  fun callF(x: X) = x.f()
+
+  fun callF(y: Y) = y.f()
+
+  fun main() {
+    val x = X()
+    val y = Y()
+    x.f()
+    y.f()
+    callF(x)
+    callF(y)
+  }
+  ```
+* 코틀린 라이브러리에선 `관습에 의한 인터페이스`를 광범위하게 사용하며 컬렉션을 다룰 때 그렇다.
+* 코틀린 컬렉션은 거의 모두 자바 컬렉이지만 다수의 확장 함수를 추가해서 자바 컬렉션을 함수형 스타일의 컬렉션을 변모해준다.
+* 이런 확장 함수는 초기에 자바와 호환성을 유지하기 위한 목적으로 쓰였지만 현재는 `필수적인 메서드만 정의해 포함하는 간단한 인터페이스를 만들고 모든 부가 함수를 확장으로 정의하라`라는 코틀린의 철학이 됐다.
+
+### 어댑터 패턴
+* 라이브러리에서 타입을 정의하고 그 타입의 객체를 파라미터로 받는 함수를 제공하는 경우가 종종 있다.
+  * 아래 방식은 상속하는 과정에서 클래스를 확장하지만 새 멤버 함수는 연결하기 위해서만 쓰인다. (UsefulLibrary 연결)
+  ```
+  interface LibType {
+    fun f1()
+    fun f2()
+  }
+
+  fun utility1(lt: LibType) {
+    lt.f1()
+    lt.f2()
+  }
+
+  fun utility2(lt: LibType) {
+    lt.f2()
+    lt.f1()
+  }
+
+  open class MyClass {
+    fun g() = trace("g()")
+    fun h() = trace("h()")
+  }
+
+  fun useMyClass(mc: MyClass) {
+    mc.g()
+    mc.h()
+  }
+
+  class MyClassAdaptedForLib :
+    MyClass(), LibType {
+    override fun f1() = h()
+    override fun f2() = g()
+  }
+
+  fun main() {
+    val mc = MyClassAdaptedForLib()
+    utility1(mc)
+    utility2(mc)
+    useMyClass(mc)
+    trace eq "h() g() g() h() g() h()"
+  }
+  ```
+  * 상속에 대해 열린 open 클래스라는 점에 의존하지만 `합성을 사용해 어댑터`를 만들 수 있다. (MyClassAdaptedForLib 안에 MyClass 필드 추가)
+  * 아래 코드는 상속보다 깔끔하지는 않지만 새로운 인터페이스에 맞게 전환해 연결하는 문제를 쉽게 해결해준다.
+  ```
+  class MyClass { // open된 클래스가 아님
+    fun g() = trace("g()")
+    fun h() = trace("h()")
+  }
+
+  fun useMyClass(mc: MyClass) {
+    mc.g()
+    mc.h()
+  }
+
+  class MyClassAdaptedForLib : LibType {
+    val field = MyClass()
+    override fun f1() = field.h()
+    override fun f2() = field.g()
+  }
+
+  fun main() {
+    val mc = MyClassAdaptedForLib()
+    utility1(mc)
+    utility2(mc)
+    useMyClass(mc.field)
+    trace eq "h() g() g() h() g() h()"
+  }
+  ```
+* 확장 함수는 어댑터를 생성할 때 아주 유용할 것 같지만, 확장 함수를 모아서 인터페이스를 구현할 수는 없다.
+
+### 멤버 함수와 확장 함수 비교
+* 함수가 `private 멤버에 접근해야 한다면 확장 함수 대신 멤버 함수를 정의`할 수 밖에 없다.
+  ```
+  class Z(var i: Int = 0) {
+    private var j = 0
+    fun increment() {
+      i++
+      j++
+    }
+  }
+
+  fun Z.decrement() {
+    i--
+    // j -- // 접근할 수 없음
+  }
+  ```
+* `확장 함수의 가장 큰 한계는 오버라이드할 수 없다는 점`이다.
+  ```
+  open class Base {
+    open fun f() = "Base.f()" // 다형성이 작동하지 않는다.
+  }
+
+  class Derived : Base() {
+    override fun f() = "Derived.f()" // 다형성이 작동한다.
+  }
+
+  fun Base.g() = "Base.g()"
+  fun Derived.g() = "Derived.g()"
+
+  fun useBase(b: Base) {
+    trace("Received ${b::class.simpleName}")
+    trace(b.f())
+    trace(b.g())
+  }
+
+  fun main() {
+    useBase(Base())
+    useBase(Derived())
+    trace eq """
+      Received Base
+      Base.f()
+      Base.g()
+      Received Derived
+      Derived.f()
+      Base.g()
+    """
+  }
+  ```
+* 클래스의 공개 멤버만으로 충분할 때는 이를 멤버 함수로 구현할 수도 있고 확장 함수로 구현할 수도 있지만 스타일의 차이로 `코드의 명확성을 높일 수 있는 방법을 선택`해야 한다.
+* 멤버 함수는 타입의 핵심을 반영한다.
+  * 함수 없이 타입을 상상할 수 없어야 하고 `확장 함수는 대상 타입을 지원하고 활용하기 위한 외부 연산이나 편리를 위한 연산`이다.
+  * 일부 함수를 확장 함수로 정의하면 대상 타입을 깔끔하고 단순하게 유지할 수 있다.
+  ```
+  interface Device {
+    val model: String
+    val productionYear: Int
+    fun overpriced() = model.startsWith("i") // 멤버, 확장 함수로도 정의될 수 있다.
+    fun outdated() = productionYear < 2050 // 멤버, 확장 함수로도 정의될 수 있다.
+  }
+
+  class MyDevice(
+    override val model: String,
+    override val productionYear: Int
+  ): Device
+
+  fun main() {
+    val gadget: Device =
+      MyDevice("my first phone", 2000)
+    gadget.outdated() eq true
+    gadget.overpriced() eq false
+  }
+  ```
+  * 오버로이드될 가능성이 없다면 확장 함수로 선언이 가능하다.
+  ```
+  fun Device.overpriced() = model.startsWith("i")
+
+  fun Device.outdated() = productionYear < 2050
+  ```
+* `확장 함수 또는 멤버 함수로 만들지는 상황과 설계상의 선택`일 뿐이다.
+* 자바는 특별히 금지않는 한 상속을 허용하지만 코틀린은 상속을 사용하지 않을 것이라고 가정해서 open 키워드가 아니면 상속과 다형성을 의도적으로 사용을 막는데 이는 코틀린이 나아갈 방향에 대한 통잘이다.
+
+> 특정 상황에서 상속을 사용할지 고민 중이라면 상속보다는 확장 함수와 합성을 택해라라는 격연을 적용해라, 하지만 확장 함수는 의견을 들어도 안티 패턴이라는 의견도 종종 발생한다
+
+## 아톰 65. 클래스 위임
+> 합성과 상속 모두 새 클래스 안에 하위 객체를 심고 합성은 하위 객체가 명시적으로 상속은 암시적으로 존재한다.
+
+### 클래스 위임
+* 클래스가 `기존의 구현을 재사용하면서 동시에 인터페이스를 구현`해야 하는 경우, 합성은 인터페이스를 노출시키지 않기 때문에 `상속과 클래스 위임이라는 두 가지 선택지`가 있다.
+* `클래스 위임은 상속과 합성의 중간 지점`으로 하위 객체의 인터페이스를 노출 시키고 하위 객체의 타입으로 업캐스트할 수 있어서 `코드 재사용성 관점에서 합성을 상속만큼 강력`하게 만들어준다.
+  ```
+
   ```
