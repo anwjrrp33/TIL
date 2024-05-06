@@ -534,3 +534,55 @@
   * 함수 추가는 타당하고 편리해 보이지만 함정에 빠뜨릴 수 있다.
   * 나중에 코드를 유지 보수해야 하는 사람에게 악영향을 끼칠 수 있는 문제며 이를 `기술 부채`라고 부른다.
 * `상속을 하면서 함수를 추가하는 건` 클래스에 기반 클래스가 있다는 사실을 무시하고 시스템 전반에서 `파생 클래스를 엄격하게 식별해 취급할 때 유용`하다.
+  * 상속과 확장 함수가 하는 일이 정확히 일치해, 확장 함수를 쓰면 상속이 필요없다.
+  ```
+  fun Heater.cool(temperature: Int) = "cooling to $temperature"
+
+  fun warmAndCool(heater: Heater) {
+    heater.heat(70) eq "heating to 70"
+    heater.cool(60) eq "cooling to 60"
+  }
+
+  fun main() {
+    val heater = Heater()
+    warmAndCool(heater)
+  }
+  ```
+  * 라이브러리 소스 코드를 바꿀 수 잇으면 다른 방식으로 설계해서 클래스를 좀 더 유연하게 만들 수 있다.
+  ```
+  class TemperatureDelta(
+    val current: Double,
+    val target: Double
+  )
+
+  fun TemperatureDelta.heat() {
+    if (current < target)
+      trace("heating to $target")
+  }
+
+  fun TemperatureDelta.cool() {
+    if (current > target)
+      trace("cooling to $target")
+  }
+
+  fun adjust(deltaT: TemperatureDelta) {
+    deltaT.heat()
+    deltaT.cool()
+  }
+
+  fun main() {
+    adjust(TemperatureDelta(60.0, 70.0))
+    adjust(TemperatureDelta(80.0, 60.0))
+    trace eq """
+      heating to 70.0
+      cooling to 60.0
+    """
+  }
+  ```
+  * `확장 함수가 아닌 멤버 함수로 정의`할 수도 있다.
+
+### 관습에 의한 인터페이스
+* 확장 함수를 함수가 하나뿐인 인터페이스를 만드는 것처럼 생각할 수 있다.
+  ```
+  
+  ```
