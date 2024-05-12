@@ -771,6 +771,297 @@
 ### 클래스 위임
 * 클래스가 `기존의 구현을 재사용하면서 동시에 인터페이스를 구현`해야 하는 경우, 합성은 인터페이스를 노출시키지 않기 때문에 `상속과 클래스 위임이라는 두 가지 선택지`가 있다.
 * `클래스 위임은 상속과 합성의 중간 지점`으로 하위 객체의 인터페이스를 노출 시키고 하위 객체의 타입으로 업캐스트할 수 있어서 `코드 재사용성 관점에서 합성을 상속만큼 강력`하게 만들어준다.
+  * 확장하거나 함수를 일부 조정하고 싶으면 상속하려고 하겠지만, open 클래스가 아니라서 상속을 할 수 없기 때문에 인스턴스를 프로퍼티로 하고 모든 멤버 함수를 인스턴스에 위임해야 한다.
+  ```
+  interface Controls {
+    fun up(velocity: Int): String
+    fun down(velocity: Int): String
+    fun left(velocity: Int): String
+    fun right(velocity: Int): String
+    fun forward(velocity: Int): String
+    fun back(velocity: Int): String
+    fun turboBoost(): String
+  }
+
+  class SpaceShipControls : Controls {
+    override fun up(velocity: Int) =
+      "up $velocity"
+    override fun down(velocity: Int) =
+      "down $velocity"
+    override fun left(velocity: Int) =
+      "left $velocity"
+    override fun right(velocity: Int) =
+      "right $velocity"
+    override fun forward(velocity: Int) =
+      "forward $velocity"
+    override fun back(velocity: Int) =
+      "back $velocity"
+    override fun turboBoost() = "turbo boost"
+  }
+
+  class ExplicitControls : Controls {
+    private val controls = SpaceShipControls()
+    // 수동으로 위임 구현하기
+    override fun up(velocity: Int) =
+      controls.up(velocity)
+    override fun back(velocity: Int) =
+      controls.back(velocity)
+    override fun down(velocity: Int) =
+      controls.down(velocity)
+    override fun forward(velocity: Int) =
+      controls.forward(velocity)
+    override fun left(velocity: Int) =
+      controls.left(velocity)
+    override fun right(velocity: Int) =
+      controls.right(velocity)
+    // 변형한 구현
+    override fun turboBoost(): String =
+      controls.turboBoost() + "... boooooost!"
+  }
+
+  fun main() {
+    val controls = ExplicitControls()
+    controls.forward(100) eq "forward 100"
+    controls.turboBoost() eq
+      "turbo boost... boooooost!"
+  }
+  ```
+* 코틀린은 클래스 위임 과정을 자동화해주며, 직접 함수 구현 작성 대신 위임에 사용할 객체를 지정하기만 하면 되며 `by 키워드를 사용해 위임을 하면 별도의 코드를 작성하지 않아도 멤버 객체의 함수를 외부 객체를 통해 접근`할 수 있다.
+  ```
+  interface AI 
+  class A : AI
+  class B(val a: A) : AI by a // 클래스 위임
+  ```
+  ```
+  class DelegatedControls(
+    private val controls: SpaceShipControls =
+      SpaceShipControls()
+  ): Controls by controls {
+    override fun turboBoost(): String =
+      "${controls.turboBoost()}... boooooost!"
+  }
+
+  fun main() {
+    val controls = DelegatedControls()
+    controls.forward(100) eq "forward 100"
+    controls.turboBoost() eq
+      "turbo boost... boooooost!"
+  }
+  ```
+* `코틀린은 다중 클래스 상속을 허용하지 않지만, 클래스 위임을 사용해 다중 클래스 상속을 흉내`낼 수 있으며 일반적으로 `다중 상속은 전혀 다른 기능을 가진 여러 클래스를 하나로 묶기`위해 쓰인다.
+  * Button은 Rectangle, MouseManager를 구현하며 Button이 비록 내부 프로퍼티 구현을 모두 상속할 수 없지만, 모두 위임할 수는 있다.
+  * Button이 두 가지 타입으로 업캐스트할 수 있음을 보여줬고 이는 다중 상속의 목표로 `위임은 다중 상속의 필요성을 해결`해준다.
+  ```
+  // 직사각형을 그리는 클래스, 마우스 이벤트를 관리하는 클래스를 하나로 묶어서 버튼을 만든다.
+  interface Rectangle {
+    fun paint(): String
+  }
+
+  class ButtonImage(
+    val width: Int,
+    val height: Int
+  ): Rectangle {
+    override fun paint() =
+      "painting ButtonImage($width, $height)"
+  }
+
+  interface MouseManager {
+    fun clicked(): Boolean
+    fun hovering(): Boolean
+  }
+
+  class UserInput : MouseManager {
+    override fun clicked() = true
+    override fun hovering() = true
+  }
+
+  // 앞의 두 클래스를 open으로 정의한다고 해도 하위 타입을
+  // 정의할 때는 상위 타입 목록에 클래스를 하나만 넣을 수 있기
+  // 때문에 다음과 같이 쓸 수는 없다.
+  // class Button : ButtonImage(), UserInput()
+
+  class Button(
+    val width: Int,
+    val height: Int,
+    var image: Rectangle = ButtonImage(width, height), // public이기 때문에 외부에서 변경 위험이 존재
+    private var input: MouseManager = UserInput()
+  ): Rectangle by image, MouseManager by input
+
+  fun main() {
+    val button = Button(10, 5)
+    button.paint() eq
+      "painting ButtonImage(10, 5)"
+    button.clicked() eq true
+    button.hovering() eq true
+    // 위임한 두 타입으로 업캐스트가 모두 가능하다
+    val rectangle: Rectangle = button
+    val mouseManager: MouseManager = button
+  }
+  ```
+* 상속은 제약이 될 수 있으며 open이 아니거나 이미 상속을 하는 경우엔 상속이 불가능하지만 클래스 위임을 사용해 제약들을 피할 수 있다.
+
+> 클래스 위임은 조심히 사용해야 하는데 상속, 합성, 클래스 위임 세가지 방법 중에 합성을 먼저 시도하면 대부분의 유즈케이스를 해결해주며 타입 계층가 이 계층 사이의 관계가 필요할 때 상속이 필요하고, 두 가지 선택이 모두 적합하지 않으면 위임을 사용한다.
+
+## 아톰 66. 다운캐스트
+### 다운캐스트
+* 다운캐스트는 이전에 업캐스트했던 객체의 구체적인 타입을 발견한다.
+* 객체 지향 프로그래밍은 업캐스트에 주로 초점을 맞추지만, 상황에 따라 다운캐스트가 유용하고 편리한 접근 방법일 수 있다.
+* 다운캐스트는 `실행 시점에 일어나며 실행 시점 타입 식별`이라고 부른다.
+* 컴파일러는 하위 타입에 추가된 함수 중에 어떤 함수를 호출해도 안전한지를 결정할 수 없다.
+  * 다운캐스트가 올바른지 보장하는 방법이 필요
+  * 잘못된 타입으로 다운캐스트를 해서 존재하지 않는 멤버 호출을 방지하는 도움 필요
+  ```
+  interface Base {
+    fun f()
+  }
+
+  class Derived1 : Base {
+    override fun f() {}
+    fun g() {}
+  }
+
+  class Derived2 : Base {
+    override fun f() {}
+    fun h() {}
+  }
+
+  fun main() {
+    val b1: Base = Derived1() // 업캐스트
+    b1.f()    // 기반 클래스의 일부분
+    // b1.g() // 기반 클래스에 들어 있지 않음
+    val b2: Base = Derived2() // 업캐스트
+    b2.f()    // 기반 클래스의 일부분
+    // b2.h() // 기반 클래스에 들어 있지 않음
+  }
   ```
 
+### 스마트 캐스트
+* 코틀린의 스마트 캐스트는 자동 다운캐스트이다.
+* is 키워드는 어떤 객체가 특정 타입인지 검사하며, 검사 영역 안에서 객체를 검사에 성공한 타입으로 간주한다.
+  ```
+  fun main() {
+    val b1: Base = Derived1() // 업캐스트
+    if(b1 is Derived1)
+      b1.g() // 'is' 검사의 영역 내부
+    val b2: Base = Derived2() // 업캐스트
+    if(b2 is Derived2)
+      b2.h() // 'is' 검사의 영역 내부
+  }
+  ```
+* 스마트 캐스트는 is를 통해 when의 인자가 어떤 타입인지 검색하는 when 식 내부에서 유용하다.
+  ```
+  interface Creature
+
+  class Human : Creature {
+    fun greeting() = "I'm Human"
+  }
+
+  class Dog : Creature {
+    fun bark() = "Yip!"
+  }
+
+  class Alien : Creature {
+    fun mobility() = "Three legs"
+  }
+
+  fun what(c: Creature): String =
+    when (c) {
+      is Human -> c.greeting()
+      is Dog -> c.bark()
+      is Alien -> c.mobility()
+      else -> "Something else"
+    }
+
+  fun main() {
+    val c: Creature = Human()
+    what(c) eq "I'm Human"
+    what(Dog()) eq "Yip!"
+    what(Alien()) eq "Three legs"
+    class Who : Creature
+    what(Who()) eq "Something else"
+  }
+  ```
+* 전통적으로 클래스 계층을 그릴 때 기반 클래스를 맨 위에 두고, 파생 클래스를 아래로 위치시킨다.
+
+### 변경 가능한 참조
+* 자동 다운캐스트는 특히 `대상이 상수여야만 제대로 작동`하며, 기반 클래스 타입의 참조가 변경 가능하다면 타입의 참조가 변경 가능하면 타입 검증 시점과 다운캐스트한 객체에 대해 호출한 시점 사이에 참조가 가리키는 객체가 바뀔 가능성이 있다. → `타입 검사와 사용 지점 사이에 객체의 구체적인 타입이 달라질 수 있다는 뜻`
+  * [1]에서 val c를 제거하면 [2]에서 `Smart cast to 'Human' is impossible, because 'c' is a mutable property that could have been changed by this time`가 발생한다.
+  * 값의 변화는 보통 동시성을 통해 일어나며, 동시성이 사용되는 코드에서는 독립적인 작업이 예측할 수 없는 시간에 c를 바꿀 수 있다.
+  ```
+  class SmartCast1(val c: Creature) {
+    fun contact() {
+      when (c) {
+        is Human -> c.greeting()
+        is Dog -> c.bark()
+        is Alien -> c.mobility()
+      }
+    }
+  }
+
+  class SmartCast2(var c: Creature) {
+    fun contact() {
+      when (val c = c) {           // [1]
+        is Human -> c.greeting()   // [2]
+        is Dog -> c.bark()
+        is Alien -> c.mobility()
+      }
+    }
+  }
+  ```
+* 상속을 위해 open된 프로퍼티도 하위 클래스에서 오버라이드를 할 수 있고, 그로 인해 프로퍼티에 접근할 때마다 항상 같은 값을 내놓는다고 보장할 수 없으므로 스마트 캐스트가 되지 않는다.
+
+### as 키워드
+* as 키워드는 일반적인 타입을 구체적인 타입으로 강제 변환한다.
+  ```
+  fun dogBarkUnsafe(c: Creature) = (c as Dog).bark()
+
+  fun dogBarkUnsafe2(c: Creature): String {
+    c as Dog
+    c.bark()
+    return c.bark() + c.bark()
+  }
+
+  fun main() {
+    dogBarkUnsafe(Dog()) eq "Yip!"
+    dogBarkUnsafe2(Dog()) eq "Yip!Yip!"
+    (capture {
+      dogBarkUnsafe(Human())
+    }) contains listOf("ClassCastException")
+  }
+  ```
+* 일반 as를 안전하지 않은 캐스트라고 부르며, 안전한 캐스트인 as?는 실패해도 예를 던지지 않고 null을 반환하지만 NullPoninterException을 방지하기 위한 추가 조치가 필요하다.
+  ```
+  fun dogBarkSafe(c: Creature) = (c as? Dog)?.bark() ?: "Not a Dog"
+
+  fun main() {
+    dogBarkSafe(Dog()) eq "Yip!"
+    dogBarkSafe(Human()) eq "Not a Dog"
+  }
+  ```
+
+### 리스트 원소의 타입 알아내기
+* 술어에서 is를 사용하면 List나 다른 이터러블의 원소가 주어진 타입의 객체인지 알 수 있다.
+  * [1]에서 find를 통한 명시적인 타입 반환, [2]에서 null을 대비한 안전한 호출 연산자
+  ```
+  val group: List<Creature> = listOf(
+    Human(), Human(), Dog(), Alien(), Dog()
+  )
+
+  fun main() {
+    val dog = group
+      .find { it is Dog } as Dog?    // [1]
+    dog?.bark() eq "Yip!"            // [2]
+  }
+  ```
+* 지정한 타입에 속하는 모든 원소 filterIsInstance()
+  * filter는 기반 클래스의 List를 반환
+  * filterIsInstance는 파생 클래스의 대상 타입의 List를 반환
+  * null 허용 타입 문제도 해결
+  ```
+  fun main() {
+    val humans1: List<Creature> = group.filter { it is Human }
+    humans1.size eq 2
+    val humans2: List<Human> = group.filterIsInstance<Human>()
+    humans2 eq humans1
+  }
   ```
