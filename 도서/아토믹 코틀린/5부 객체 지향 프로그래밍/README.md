@@ -1171,3 +1171,284 @@
 * sealedSubclasses는 다형적인 시스템을 만들 때 중요한 도구가 될 수 있으며, 새로운 클래스가 모든 적합한 연산에 자동으로 포함되도록 보장할 수 있지만 하위 클래스를 실행 시점에 찾아내기에 시스템의 성능에 영향을 끼친다.
   * 속도 문제가 발생한다면 프로파일러를 사용해 문제의 원인을 분석하고 파악해서 검토해야 한다.
   * 보통 프로퍼일러를 사용하면서 문제의 원인이라고 생각한 부분이 성능 문제의 진짜 원인이 아니라는 사실을 알게 된다.
+
+## 아톰 68. 타입 검사
+### 타입 검사
+* 코틀린에서는 객체 타입에 기반해 원하는 동작을 쉽게 수행하며, 타입에 따른 동작은 다형성 영역에 속해서 타입 검사를 통한 흥미로운 설계가 가능하다.
+* 타입 검사는 특별한 경우에 써먹기 위한 것이었다.
+* 곤충은 대부분 날 수 있지만, 날 수 없는 곤충이 극소수 존재한다.
+  * 특별한 처리를 위해 별도의 소수 타입을 선택하는 것이 타입 검사의 전형적인 유스케이스다.
+  * 시스템에 새 타입을 추가해도 기존 코드에 영향을 끼치지 않는다.
+  ```
+  interface Insect {
+    fun walk() = "$name: walk"
+    fun fly() = "$name: fly"
+  }
+
+  class HouseFly : Insect
+
+  class Flea : Insect {
+    override fun fly() =
+      throw Exception("Flea cannot fly")
+    fun crawl() = "Flea: crawl"
+  }
+
+  fun Insect.basic() =
+    walk() + " " +
+    if (this is Flea)
+      crawl()
+    else
+      fly()
+
+  interface SwimmingInsect: Insect {
+    fun swim() = "$name: swim"
+  }
+
+  interface WaterWalker: Insect {
+    fun walkWater() =
+      "$name: walk on water"
+  }
+
+  class WaterBeetle : SwimmingInsect
+  class WaterStrider : WaterWalker
+  class WhirligigBeetle :
+    SwimmingInsect, WaterWalker
+
+  fun Insect.water() =
+    when(this) {
+      is SwimmingInsect -> swim()
+      is WaterWalker -> walkWater()
+      else -> "$name: drown"
+    }
+
+  fun main() {
+    val insects = listOf(
+      HouseFly(), Flea(), WaterStrider(),
+      WaterBeetle(), WhirligigBeetle()
+    )
+    insects.map { it.basic() } eq
+      "[HouseFly: walk HouseFly: fly, " +
+      "Flea: walk Flea: crawl, " +
+      "WaterStrider: walk WaterStrider: fly, " +
+      "WaterBeetle: walk WaterBeetle: fly, " +
+      "WhirligigBeetle: walk " +
+      "WhirligigBeetle: fly]"
+    insects.map { it.water() } eq
+      "[HouseFly: drown, Flea: drown, " +
+      "WaterStrider: walk on water, " +
+      "WaterBeetle: swim, " +
+      "WhirligigBeetle: swim]"
+  }
+  ```
+* 많은 타입을 추가하며 시스테을 진화시켜야 한다면 코드가 지저분 해지기 시작한다.
+  * turn1(), turn2()와 같은 함수가 점점 많아진다면 계층 구조 안에 들어 있지 않고 모든 함수에 분산된다.
+  * when이 들어 있는 모든 함수를 찾아서 새로 추가한 타입을 처리하게 변경해야하며 제대로 변경하지 못해도 컴파일러는 감지하지 못한다.
+  ```
+  interface Shape {
+    fun draw(): String
+  }
+
+  class Circle : Shape {
+    override fun draw() = "Circle: Draw"
+  }
+
+  class Square : Shape {
+    override fun draw() = "Square: Draw"
+    fun rotate() = "Square: Rotate"
+  }
+
+  fun turn(s: Shape) = when(s) {
+    is Square -> s.rotate()
+    else -> ""
+  }
+
+  class Triangle : Shape {
+    override fun draw() = "Triangle: Draw"
+    fun rotate() = "Triangle: Rotate"
+  }
+
+  fun turn2(s: Shape) = when(s) {
+    is Square -> s.rotate()
+    is Triangle -> s.rotate()
+    else -> ""
+  }
+
+  fun main() {
+    val shapes =
+      listOf(Circle(), Square(), Triangle())
+    shapes.map { it.draw() } eq
+      "[Circle: Draw, Square: Draw, " +
+      "Triangle: Draw]"
+    shapes.map { turn(it) } eq
+      "[, Square: Rotate, ]"
+    shapes.map { turn2(it) } eq
+      "[, Square: Rotate, Triangle: Rotate]"
+  }
+  ```
+* 시스템의 모든 타입을 검사하며 코딩하는 것을 `타입 검사 코딩`이라는 방식을 보여주는데 객체 지향 언어에서는 안티패턴으로 간주되며 타입을 추가하거나 변경할 때마다 유지 보수해야 하는 코드가 점점 많아지기 때문에 다형성을 사용해서 변경 내용을 캡슐화해서 변경할 타입에 넣어주면 변경 내용이 시스템 전체에 투명하게 전파된다.
+* 코틀린에선 sealed 클래스를 사용해서 타입 검사 코딩 문제를 완벽하지는 않지만 완화할 수 있어서 합리적인 설계를 선택할 수 있게 한다.
+
+### 외부 함수에서 타입 검사하기
+* 클래스가 음료수를 저장하고 배달한다고 가정하며, 음료수를 먹고 난 뒤의 음료수 병을 재활용한느 것을 외부 함수로 다룬다.
+  * recycle을 외부 함수로 정의해 재활용 동작을 분산시키지 않고 한군데 모아두었다.
+  * 하지만, 새 타입을 추가할 때 함수를 수정해야하는 하는데 수정하지 않는 경우가 발생할 수 있다. → 컴파일러가 자동으로 알려줄 순 없을까?
+  ```
+  interface BeverageContainer {
+    fun open(): String
+    fun pour(): String
+  }
+
+  class Can : BeverageContainer {
+    override fun open() = "Pop Top"
+    override fun pour() = "Can: Pour"
+  }
+
+  open class Bottle : BeverageContainer {
+    override fun open() = "Remove Cap"
+    override fun pour() = "Bottle: Pour"
+  }
+
+  class GlassBottle : Bottle()
+  class PlasticBottle : Bottle()
+
+  fun BeverageContainer.recycle() =
+    when(this) {
+      is Can -> "Recycle Can"
+      is GlassBottle -> "Recycle Glass"
+      else -> "Landfill"
+    }
+
+  fun main() {
+    val refrigerator = listOf(
+      Can(), GlassBottle(), PlasticBottle()
+    )
+    refrigerator.map { it.open() } eq
+      "[Pop Top, Remove Cap, Remove Cap]"
+    refrigerator.map { it.recycle() } eq
+      "[Recycle Can, Recycle Glass, " +
+      "Landfill]"
+  }
+  ```
+* sealed 클래스를 사용해서 개선하기
+  * sealed 클래스를 사용하면 `매번 추가된 타입을 검사`해야 한다.
+  ```
+  sealed class Shape {
+    fun draw() = "$name: Draw"
+  }
+
+  class Circle : Shape()
+
+  class Square : Shape() {
+    fun rotate() = "Square: Rotate"
+  }
+
+  class Triangle : Shape() {
+    fun rotate() = "Triangle: Rotate"
+  }
+
+  fun turn(s: Shape) = when(s) {
+    is Circle -> ""
+    is Square -> s.rotate()
+    is Triangle -> s.rotate()
+  }
+
+  fun main() {
+    val shapes = listOf(Circle(), Square())
+    shapes.map { it.draw() } eq
+      "[Circle: Draw, Square: Draw]"
+    shapes.map { turn(it) } eq
+      "[, Square: Rotate]"
+  }
+  ```
+  * 하지만, 이 방법 또한 완전한 개선은 아니며, 최상위 sealed 클래스에 중간 클래스가 생긴다면 하나의 when 문으로는 컴파일러가 하위 타입 검사를 보장하지 못하기 때문에 when 안에 다른 when을 사용해야 한다. → 상속을 여러 단계에 걸쳐 수행할 때만 발생한다.
+  * 다형성처럼 명확해 보이지는 않지만, 큰 개선이 이루어져 있으며, 이런 기능을 통해서 멤버 함수와 외부 함수 중에 선택할 수 있다.
+* 인터페이스를 사용해 클래스 개선하기
+  * 하위 클래스가 재활용을 오버라이드하도록 강제한다.
+  * 하지만 재활용의 행동 방식이 여러 클래스에 분산했고, 재활용 동작이 자주 바뀌면 한꺼번에 이를 처리하고 싶을 때 외부 함수 안에서 타입 검사를 사용하는 게 맞는 선택일 수도 있다. → 외부 함수보다 간단한 팩토리를 써서 클래스를 반환해서 재활용을 동작하는 것도 좋지 않을까?
+  ```
+  interface BeverageContainer {
+    fun open(): String
+    fun pour() = "$name: Pour"
+    fun recycle(): String
+  }
+
+  abstract class Can : BeverageContainer {
+    override fun open() = "Pop Top"
+  }
+
+  class SteelCan : Can() {
+    override fun recycle() = "Recycle Steel"
+  }
+
+  class AluminumCan : Can() {
+    override fun recycle() = "Recycle Aluminum"
+  }
+
+  abstract class Bottle : BeverageContainer {
+    override fun open() = "Remove Cap"
+  }
+
+  class GlassBottle : Bottle() {
+    override fun recycle() = "Recycle Glass"
+  }
+
+  abstract class PlasticBottle : Bottle()
+
+  class PETBottle : PlasticBottle() {
+    override fun recycle() = "Recycle PET"
+  }
+
+  class HDPEBottle : PlasticBottle() {
+    override fun recycle() = "Recycle HDPE"
+  }
+
+  fun main() {
+    val refrigerator = listOf(
+      SteelCan(), AluminumCan(),
+      GlassBottle(),
+      PETBottle(), HDPEBottle()
+    )
+    refrigerator.map { it.open() } eq
+      "[Pop Top, Pop Top, Remove Cap, " +
+      "Remove Cap, Remove Cap]"
+    refrigerator.map { it.recycle() } eq
+      "[Recycle Steel, Recycle Aluminum, " +
+      "Recycle Glass, " +
+      "Recycle PET, Recycle HDPE]"
+  }
+  ```
+
+## 아톰 69. 내포된 클래스
+### 내포된 클래스
+* `내포된 클래스를 사용하면 객체 안에 더 세분화된 구조를 정의`할 수 있다.
+* 내포된 클래스는 외부 클래스의 이름 공간 안에 정의된 클래스이며, 외부 클래스의 구현이 내포된 클래스를 소유한다.
+  ```
+  class Airport(private val code: String) {
+    open class Plane {
+      // 자신을 둘러싼 클래스의 private 프로퍼티에 접근할 수 있다
+      fun contact(airport: Airport) =
+        "Contacting ${airport.code}"
+    }
+    private class PrivatePlane : Plane()
+    fun privatePlane(): Plane = PrivatePlane()
+  }
+
+  fun main() {
+    val denver = Airport("DEN")
+    var plane = Plane()                   // [1]
+    plane.contact(denver) eq "Contacting DEN"
+    // 다음과 같이 할 수 없다
+    // val privatePlane = Airport.PrivatePlane()
+    val frankfurt = Airport("FRA")
+    plane = frankfurt.privatePlane()
+    // 다음과 같이 할 수 없다
+    // val p = plane as PrivatePlane      // [2]
+    plane.contact(frankfurt) eq "Contacting FRA"
+  }
+  ```
+
+### 지역 클래스
+* `함수 안에 내포된 클래스를 지역 클래스`라고 한다.
+  ```
+  
+  ```
