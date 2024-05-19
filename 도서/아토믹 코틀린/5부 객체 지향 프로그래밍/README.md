@@ -1065,3 +1065,109 @@
     humans2 eq humans1
   }
   ```
+
+## 아톰 67. 봉인된 클래스
+### 봉인된 클래스
+* 클래스 계층을 제한하려면 상위 클래스를 sealed로 선언한다.
+* 코드에서 다운캐스트가 여기저기 흩어져 있다면 이런 변경으로 인해 유지 보수가 힘들어지는데, sealed 키워드를 사용해 개선할 수 있으며 sealed 키워드로 상속을 제한한 클래스를 봉인된 클래스라고 부른다.
+  * sealed 클래스를 직접 상속한 하위 클래스는 반드시 기반 클래스와 같은 패키지와 모듈 안에 있어야 한다.
+  * 코틀린은 when 식이 모든 경우를 검사하도록 강요하지만, sealed라서 하위 클래스가 존재할 수 없다는 사실을 확신해서 else가 필요 없다.
+  * sealed 계층을 도입하면 새 하위 클래스를 선언할 때 오류를 발견하며, 기존 타입 계층을 사용하던 모든 코드를 손봐야 한다. → Transport에 하위 클래스인 Tram을 추가하면 변경 없이는 travel() 함수가 제대로 작동하지 않는다.
+  ```
+  sealed class Transport
+
+  data class Train(
+    val line: String
+  ) : Transport()
+
+  data class Bus(
+    val number: String,
+    val capacity: Int
+  ) : Transport()
+
+  fun travel(transport: Transport) =
+    when (transport) {
+      is Train ->
+        "Train ${transport.line}"
+      is Bus ->
+        "Bus ${transport.number}: " +
+        "size ${transport.capacity}"
+    }
+
+  fun main() {
+    listOf(Train("S1"), Bus("11", 90))
+      .map(::travel) eq
+      "[Train S1, Bus 11: size 90]"
+  }
+  ```
+* sealed 키워드는 다운캐스트를 쓸만하게 만들어주지만 과도하게 사용하는 것보다 보통은 다형성을 써서 코드를 깔끔하게 작성할 수 있는 방법이 있다.
+
+### sealed와 abstract 비교
+* abstract와 sealed 클래스가 타입이 똑같은 함수, 프로퍼티, 함수가 동일한 경우 아래와 같은 차이 점이 존재한다.
+  * sealed 클래스는 하위 클래스가 모두 같은 파일 안에 정의된다는 제약이 abstract에서 추가됬다.
+  ```
+  abstract class Abstract(val av: String) {
+    open fun concreteFunction() {}
+    open val concreteProperty = ""
+    abstract fun abstractFunction(): String
+    abstract val abstractProperty: String
+    init {}
+    constructor(c: Char) : this(c.toString())
+  }
+
+  open class Concrete() : Abstract("") {
+    override fun concreteFunction() {}
+    override val concreteProperty = ""
+    override fun abstractFunction() = ""
+    override val abstractProperty = ""
+  }
+
+  sealed class Sealed(val av: String) {
+    open fun concreteFunction() {}
+    open val concreteProperty = ""
+    abstract fun abstractFunction(): String
+    abstract val abstractProperty: String
+    init {}
+    constructor(c: Char) : this(c.toString())
+  }
+
+  open class SealedSubclass() : Sealed("") {
+    override fun concreteFunction() {}
+    override val concreteProperty = ""
+    override fun abstractFunction() = ""
+    override val abstractProperty = ""
+  }
+
+  fun main() {
+    Concrete()
+    SealedSubclass()
+  }
+  ```
+  * sealed 클래스의 간적적인 하위 클래스를 별도의 파일에 정의할 수 있다.
+  ```
+  class ThirdLevel : SealedSubclass() // 직접 sealed를 상속받지 않아서 가능하다
+  ```
+* sealed interface 도 유용하며, JVM에서 자바 15부터 sealed interface 도입돼 코틀린 1.5부터 지원한다.
+
+### 하위 클래스 열거하기
+* 클래스가 sealed인 경우 모든 하위 클래스를 쉽게 이터레이션할 수 있다.
+  ```
+  sealed class Top
+  class Middle1 : Top()
+  class Middle2 : Top()
+  open class Middle3 : Top()
+  class Bottom3 : Middle3()
+
+  fun main() {
+    Top::class.sealedSubclasses
+      .map { it.simpleName } eq "[Middle1, Middle2, Middle3]"
+  }
+  ```
+* 클래스를 생성하면 클래스 객체가 생성되고, 클래스 객체의 프로퍼티와 멤버 함수에 접근해서 클래스에 대한 정보를 얻어서 객체를 생성하거나 조작할 수 있다.
+  * `클래스이름::class`
+* sealedSubclasses를 사용하면 봉인된 클래스의 모든 직접적인 하위 클래스를 반환한다.
+* sealedSubclasses는 `리플렉션`을 사용하며 kotlin-reflection.jar라는 의존 관계가 클래스 경로에 있어야 리플렉션을 사용한다.
+* 리플렉션은 클래스를 동적으로 찾아내고 찾아낸 클래스의 특성을 동적으로 사용하는 방법을 제공한다.
+* sealedSubclasses는 다형적인 시스템을 만들 때 중요한 도구가 될 수 있으며, 새로운 클래스가 모든 적합한 연산에 자동으로 포함되도록 보장할 수 있지만 하위 클래스를 실행 시점에 찾아내기에 시스템의 성능에 영향을 끼친다.
+  * 속도 문제가 발생한다면 프로파일러를 사용해 문제의 원인을 분석하고 파악해서 검토해야 한다.
+  * 보통 프로퍼일러를 사용하면서 문제의 원인이라고 생각한 부분이 성능 문제의 진짜 원인이 아니라는 사실을 알게 된다.
