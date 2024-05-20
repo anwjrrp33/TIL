@@ -1449,6 +1449,299 @@
 
 ### 지역 클래스
 * `함수 안에 내포된 클래스를 지역 클래스`라고 한다.
+  * 단, 지역 인터페이스는 허용되지 않는다.
   ```
+  fun localClasses() {
+    open class Amphibian
+    class Frog : Amphibian()
+    val amphibian: Amphibian = Frog()
+  }
+  ```
+* 지역 open 클래스는 (거의) 정의하지 말아야하며, 정의해야하는 경우는 클래스가 중요한 경우이다.
+* 지역 클래스의 객체 반환하려면 객체를 함수 밖에서 정의한 인터페이스나 클래스로 업캐스트 해야 한다.
+  ```
+  interface Amphibian
+
+  fun createAmphibian(): Amphibian {
+    class Frog : Amphibian
+    return Frog()
+  }
+
+  fun main() {
+    val amphibian = createAmphibian()
+    // 다음과 같이 다운캐스트시 컴파일 오류가 발생한다
+    // amphibian as Frog
+  }
+  ```
+
+### 인터페이스에 포함된 클래스
+* 인터페이스 안에 클래스를 내포시킬 수 있다.
+  ```
+  interface Item {
+    val type: Type
+    data class Type(val type: String)
+  }
+
+  class Bolt(type: String) : Item {
+    override val type = Item.Type(type)
+  }
+  ```
+
+### 내포된 이넘
+* 이넘도 클래스기에 다른 클래스 안에 내포가능하다.
+  ```
+  class Ticket(
+    val name: String,
+    val seat: Seat = Coach
+  ) {
+    enum class Seat {
+      Coach,
+      Premium,
+      Business,
+      First
+    }
+    ...
+  }
+  ```
+* 이넘을 함수에 내포시킬 수는 없고, 이넘이 다른 클래스를 상속할 수도 없다.
+* 이넘을 인터페이스 안에 내포시킬 수 있다.
+  ```
+  interface Game {
+    enum class State { Playing, Finished }
+    enum class Mark { Blank, X ,O }
+  }
   
+  class FillIt(
+    val side: Int = 3, randomSeed: Int = 0
+  ): Game {
+    private var state = Playing
+    private val grid = MutableList(side * side) { Blank }
+    private var player = X
+    ...
+  }
+  ...
   ```
+
+## 아톰 70. 객체
+### 객체
+* object 키워드는 인스턴스를 생성할 수 없고 오직 하나만 존재하며 싱글턴 패턴이라고 한다.
+* 인스턴스를 여러 개 생성하는 것을 막고 싶은 경우 한 개체 안에 속한 함수와 프로퍼티를 함께 엮는 방법이다.
+  ```
+  object JustOne {
+    val n = 2
+    fun f() = n * 10
+    fun g() = this.n * 20   // this 키워드는 유일한 객체 인스턴스를 가리키며 이 경우 JustOne이다.
+  }
+
+  fun main() {
+    // val x = JustOne() // 인스턴스를 직접 생성하는 경우 Error 발생!
+    JustOne.n eq 2
+    JustOne.f() eq 20
+    JustOne.g() eq 40
+  }
+  ```
+* object에 대해 파라미터 목록을 지정할 수 없다.
+  ```
+  object JustOne(val n: Int) // 파라미터 목록 지정 금지
+  ```
+* 보통 object의 이름은 클래스의 이름을 겸해서 첫 글자를 영어 대문자로 표현한다.
+* object는 다른 일반 클래스나 인터페이스를 상속 가능하다.
+  ```
+  open class Paint(val color: String) {
+    open fun apply() = "Applying $color"
+  }
+
+  object Acrylic: Paint("Blue") {
+    override fun apply() =
+      "Acrylic, ${super.apply()}"
+  }
+
+  interface PaintPreparation {
+    fun prepare(): String
+  }
+
+  object Prepare: PaintPreparation {
+    override fun prepare() = "Scrape"
+  }
+  ```
+* object는 인스턴스를 하나만 만들기 때문에 결과가 동일하다. → 여러 곳에서 연산이 일어나면 모든 연산 합의 최종 값이 결과가 된다.
+* object를 private으로 정의해 접근할 수 없도록 할 수 있으며, 클래스 안에 내포해 사용 가능하다. → 내포 클래스 외에 `commpanion object 키워드`를 이용해 사용할 수도 있다.
+
+## 아톰 71. 내부 클래스
+### 내부 클래스
+* 내부 클래스의 객체는 자신을 둘러싼 클래스의 인스턴스에 대한 참조를 유지한다.
+  * 내포된 클래스는 inner(내부) 클래스를 상속할 수 없다.
+  * 코틀린은 inner data 클래스를 허용하지 않는다.
+  ```
+  class Hotel(private val reception: String) {
+    open inner class Room(val id: Int = 0) {
+      // Room을 둘러싼 클래스의 'reception'을 사용한다
+      fun callReception() =
+        "Room $id Calling $reception"
+    }
+    private inner class Closet : Room()
+    fun closet(): Room = Closet()
+  }
+  ```
+
+### 한정된 this
+* inner(내부) 클래스에서 this 는 inner 객체나 외부 객체를 가리킬 수 있기 때문에 한정된 this 구문을 사용하며 한정된 this는 this 뒤에 @을 붙이고 대상 클래스 이름을 덧붙인다.
+  * `this@대상클래스`
+
+### 내부 클래스 상속
+* 내부 클래스는 다른 외부 클래스에 있는 내부 클래스를 상속할 수 있다.
+  ```
+  open class Egg {
+    private var yolk = Yolk()
+    open inner class Yolk {
+      init { trace("Egg.Yolk()") }
+      open fun f() { trace("Egg.Yolk.f()") }
+    }
+    init { trace("New Egg()") }
+    fun insertYolk(y: Yolk) { yolk = y }
+    fun g() { yolk.f() }
+  }
+
+  class BigEgg : Egg() {
+    inner class Yolk : Egg.Yolk() { // 외부 클래스의 내부 클래스의 상속
+      init { trace("BigEgg.Yolk()") }
+      override fun f() {
+        trace("BigEgg.Yolk.f()")
+      }
+    }
+    init { insertYolk(Yolk()) }
+  }
+  ```
+
+### 지역 내부 클래스와 익명 내부 클래스
+* `멤버 함수 안에 정의된 클래스를 지역 내부 클래스라고 하면 객체 식이나 SAM 변환을 사용해 익명으로 생성 가능`하며, 모든 경우에 inner 키워드를 사용하지 않지만 `암시적으로 내부 클래스`가 된다.
+  * * 객체 식으로 사용된다는 특징으로 익명 내부 클래스를 식별할 수 있으며, 익명 내부 클래스는 작고 단순해 이름이 있는 클래스로 만들지 않고, 간단한 익명 내부 클래스는 SAM 변환이 있다.
+  ```
+  object CreatePet {
+    fun home() = " home!"
+    fun dog(): Pet {
+      val say = "Bark"
+      // 지역 내부 클래스
+      class Dog : Pet {
+        override fun speak() = say + home()
+      }
+      return Dog()
+    }
+    fun cat(): Pet {
+      val emit = "Meow"
+      // 익명 내부 클래스
+      return object: Pet {
+        override fun speak() = emit + home()
+      }
+    }
+    fun hamster(): Pet {
+      val squeak = "Squeak"
+      // SAM 변환
+      return Pet { squeak + home() }
+    }
+  }
+  ```
+* 내부 클래스는 외부 클래스 객체에 대한 참조를 저장하므로 `지역 내부 클래스도 자신을 둘러싼 클래스에 속한 객체의 모든 멤버에 접근`할 수 있다.
+* SAM 변환으로 선언하는 객체 내부에는 init 블록이 들어갈 수 없다는 한계가 있다.
+* 코틀린에서는 한 파일 안에 최상위 클래스, 함수를 정의할 수 있기 때문에 지역 클래스를 거의 사용하지 않아서 `지역 클래스는 아주 단순한 클래스를 사용해야 합리적`이다. → 복잡해지는 경우 일반 클래스로 격상
+
+## 아톰 72. 동반 객체
+### 동반 객체
+* 멤버 함수는 클래스의 특정 인스턴스에 작동하며 일부 함수는 어떤 객체에 대한 함수가 아닐 수 있기 때문에 `함수는 특정 객체에 매여 있을 필요가 없다.`
+* companion object는 동반 객체라고 부르며, 안에 있는 함수와 필드는 클래스에 대한 함수와 필드지만, 일반 클래스는 동반 객체에 접근 가능하지만 그 반대는 불가능하다.
+  ```
+  class WithCompanion {
+    companion object { // 동반 객체 선언
+      val i = 3
+      fun f() = i * 3
+    }
+    fun g() = i + f()
+  }
+
+  fun WithCompanion.Companion.h() = f() * i
+  ```
+* 동반 객체는 클래스당 하나만 허용되고, 동반 객체에 이름을 부여할 수 있다.
+  ```
+  companion object Named { ... }
+
+  클래스명.Named.이름 // 동반 객체에 이름을 붙이는 경우
+  클래스명.Companion.이름 // 붙이지 않는 경우 Companion을 디폴트로 부여한다.
+  ```
+* 동반 객체 안에서 프로퍼티 생성 시 메모리 상에 단 하나만 존재하고 모든 인스턴스가 이 필드를 공유한다.
+* 어떤 함수가 오직 동반 객체의 프로퍼티만 사용한다면 해당 함수를 동반 객체로 옮기는 게 좋다.
+* 동반 객체가 다른 곳에 정의한 클래스의 인스턴스일 수 있다.
+  ```
+  interface ZI {
+    fun f(): String
+    fun g(): String
+  }
+
+  open class ZIOpen : ZI {
+    override fun f() = "ZIOpen.f()"
+    override fun g() = "ZIOpen.g()"
+  }
+
+  class ZICompanion {
+    companion object: ZIOpen()
+    fun u() = trace("${f()} ${g()}")
+  }
+
+  class ZICompanionInheritance {
+    companion object: ZIOpen() {
+      override fun g() =
+        "ZICompanionInheritance.g()"
+      fun h() = "ZICompanionInheritance.h()"
+    }
+    fun u() = trace("${f()} ${g()} ${h()}")
+  }
+
+  class ZIClass {
+    companion object: ZI {
+      override fun f() = "ZIClass.f()"
+      override fun g() = "ZIClass.g()"
+    }
+    fun u() = trace("${f()} ${g()}")
+  }
+  ```
+* 동반 객체 클래스가 open이 아니라면 클래스 위임을 사용해 동반 객체가 클래스를 활용할 수 있다. → 위임을 오버라이드하고 확장할 수 있다.
+  ```
+  class ZIClosed : ZI {
+    override fun f() = "ZIClosed.f()"
+    override fun g() = "ZIClosed.g()"
+  }
+
+  class ZIDelegation {
+    companion object: ZI by ZIClosed()
+    fun u() = trace("${f()} ${g()}")
+  }
+
+  class ZIDelegationInheritance {
+    companion object: ZI by ZIClosed() {
+      override fun g() =
+        "ZIDelegationInheritance.g()"
+      fun h() =
+        "ZIDelegationInheritance.h()"
+    }
+    fun u() = trace("${f()} ${g()} ${h()}")
+  }
+  ```
+* 동반 객체의 사용법 중 객체 생성을 제어하는 경우를 들 수 있는 `팩토리 메서드 패턴`에 해당한다.
+  * 일반 생성자로 해결할 수 없는 문제를 팩토리 함수가 해결해준다 → 생성자에서 연산 로직 
+  ```
+  class Numbered2
+
+  private constructor(private val id: Int) {
+    override fun toString() = "#$id"
+    companion object Factory {
+      fun create(size: Int) =
+        List(size) { Numbered2(it) }
+    }
+  }
+
+  fun main() {
+    Numbered2.create(0) eq "[]"
+    Numbered2.create(5) eq
+      "[#0, #1, #2, #3, #4]"
+  }
+  ```
+* 동반 객체 생성자는 동반 객체를 둘러싼 클래스가 `최초로 프로그램에 적재될 때 이뤄진다.`
