@@ -82,10 +82,60 @@ QPS 계산
         </tbody>
     </table>
   * 반환되는 결과
-    * business object는 사업장의 사진, 리뷰, 별점 등의 추가 정보가 필요할 수 도 있다.
+    * business object는 사업장의 사진, 리뷰, 별점 등의 추가 정보가 필요할 수도 있다.
     ```
     {
         "total": 10, 
         "businesses":[{business object}]
     }
     ```
+
+#### 사업장 관련 API
+<table class="table">
+    <thead>
+        <tr>
+            <th>API</th>
+            <th>설명</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>GET /v1/businesses/:id</td>
+            <td>특정 사업장의 상세 정보 반환</td>
+        </tr>
+        <tr>
+            <td>POST /v1/businesses</td>
+            <td>새로운 사업장 추가</td>
+        </tr>
+        <tr>
+            <td>PUT /v1/businesses/:id</td>
+            <td>사업장 상세 정보 갱신</td>
+        </tr>
+        <tr>
+            <td>DELETE /v1/businesses/:id</td>
+            <td>특정 사업장 정보 삭제</td>
+        </tr>
+    </tbody>
+</table>
+
+### 데이터 모델
+#### 읽기/쓰기 비율
+* 아래 두가지 기능으로 인해 읽기 연산은 자주 수행된다.
+1. 주변 사업장 검색
+2. 사업장 정보 확인
+* 읽기 연산이 많은 시스템에는 MySQL같은 관계형 데이터베이스가 바람직할 수 있다.
+
+#### 데이터 스키마
+* business 테이블
+![alt text](image-1.png)
+* 지리적 위치 색인 테이블
+
+### 개략적 설계
+* 위치 기반 서비스와 사업장 관련 서비스로 구성된다.
+![alt text](image-2.png)
+
+#### 로드밸런서
+* 유입 트래픽을 자동으로 여러 서비스에 분산시키는 컴포넌트
+* DNS 진입점을 지정하고, URL 경로를 분석해 트래픽을 어느 서비스에 전달할지 결정
+
+#### 위치 기반 서비스
