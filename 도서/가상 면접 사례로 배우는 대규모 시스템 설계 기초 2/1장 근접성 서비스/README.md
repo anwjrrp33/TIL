@@ -426,3 +426,6 @@ QPS 계산
 
 ### 최종 설계도
 ![alt text](image-11.png)
+
+### 참고
+* [Uber에서 사용하는 H3](https://www.youtube.com/watch?v=ay2uwtRO3QE)
