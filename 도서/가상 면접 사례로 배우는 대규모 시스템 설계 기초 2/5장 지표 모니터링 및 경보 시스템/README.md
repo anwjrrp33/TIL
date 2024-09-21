@@ -321,7 +321,7 @@ CPU.load host=webserver01,region=us-west 1613707265 83
 * 프로메테우스, InfluxDB 같은 지표 모니터링 시스템은 SQL이 아닌 독자 질의어를 제공한다.
 * 시계열 데이터는 SQL로는 질의하기가 까다롭기 때문이다.
 
-> **예시) 지수 이동 편균 계산**
+> **예시) 지수 이동 평균 계산**
 ```sql
 -- SQL
 select 
